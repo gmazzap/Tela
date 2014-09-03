@@ -55,7 +55,17 @@ var Tela = {};
 
     Tela.PluginHelpers = {
         init: function(settings) {
-            var defaults = {action: null, data: {}, ajax: {}, event: null, updateOn: null, subject: null, done: null, fail: null, always: null};
+            var defaults = {
+                action: null,
+                data: {},
+                ajax: {},
+                event: null,
+                updateOn: null,
+                subject: null,
+                done: null,
+                fail: null,
+                always: null
+            };
             settings = $.extend(defaults, settings);
             if (typeof settings.action !== 'string' || settings.action === '') {
                 settings.action = $(this).data('tela-action');
@@ -131,8 +141,14 @@ var Tela = {};
                 if (typeof settings.subject === 'string' && settings.subject !== '') {
                     var target = this;
                     $(document).on(settings.event, settings.subject, function() {
-                        postdata = Tela.PluginHelpers.getPostData.apply(caller, [settings.data, this]);
-                        return Tela.Ajax.updateHtml.apply(Tela.Ajax, [target, settings.action, postdata, settings.ajax]);
+                        postdata = Tela.PluginHelpers.getPostData.apply(
+                                caller,
+                                [settings.data, this]
+                                );
+                        return Tela.Ajax.updateHtml.apply(
+                                Tela.Ajax,
+                                [target, settings.action, postdata, settings.ajax]
+                                );
                     });
                 }
                 break;
@@ -141,14 +157,25 @@ var Tela = {};
                 var triggerer = settings.updateOn === 'global-event' ? $(window) : $(document);
                 triggerer.on(settings.event, function() {
                     var postdataargs = arguments;
-                    postdata = Tela.PluginHelpers.getPostData.apply(caller, [settings.data, caller, postdataargs]);
-                    return Tela.Ajax.updateHtml.apply(Tela.Ajax, [caller, settings.action, postdata, settings.ajax]);
+                    postdata = Tela.PluginHelpers.getPostData.apply(
+                            caller,
+                            [settings.data, caller, postdataargs]
+                            );
+                    return Tela.Ajax.updateHtml.apply(
+                            Tela.Ajax,
+                            [caller, settings.action, postdata, settings.ajax]
+                            );
                 });
                 break;
             case 'self-event' :
                 $(this).on(settings.event, function() {
-                    postdata = Tela.PluginHelpers.getPostData.apply(caller, [settings.data, caller]);
-                    return Tela.Ajax.updateHtml.apply(Tela.Ajax, [caller, settings.action, postdata, settings.ajax]);
+                    postdata = Tela.PluginHelpers.getPostData.apply(
+                            caller,
+                            [settings.data, caller]
+                            );
+                    return Tela.Ajax.updateHtml.apply(
+                            Tela.Ajax, [caller, settings.action, postdata, settings.ajax]
+                            );
                 });
                 break;
             default :
@@ -156,14 +183,26 @@ var Tela = {};
                 var selector = Tela.PluginHelpers.getSelector.apply(caller);
                 if (selector) {
                     $(document).on(settings.event, selector, function() {
-                        postdata = Tela.PluginHelpers.getPostData.apply(caller, [settings.data, caller]);
-                        response = Tela.Ajax.run.apply(Tela.Ajax, [settings.action, postdata, settings.ajax]);
+                        postdata = Tela.PluginHelpers.getPostData.apply(
+                                caller,
+                                [settings.data, caller]
+                                );
+                        response = Tela.Ajax.run.apply(
+                                Tela.Ajax,
+                                [settings.action, postdata, settings.ajax]
+                                );
                         return Tela.PluginHelpers.response(response, settings);
                     });
                 } else {
                     $(caller).on(settings.event, function() {
-                        postdata = Tela.PluginHelpers.getPostData.apply(caller, [settings.data, caller]);
-                        response = Tela.Ajax.run.apply(Tela.Ajax, [settings.action, postdata, settings.ajax]);
+                        postdata = Tela.PluginHelpers.getPostData.apply(
+                                caller,
+                                [settings.data, caller]
+                                );
+                        response = Tela.Ajax.run.apply(
+                                Tela.Ajax,
+                                [settings.action, postdata, settings.ajax]
+                                );
                         return Tela.PluginHelpers.response(response, settings);
                     });
                 }
