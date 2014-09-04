@@ -29,14 +29,17 @@ var Tela = {};
             );
             return $.ajax(settings);
         },
-        updateHtml: function(target, action, data, settings) {
-            if (settings === null || typeof settings !== 'object') {
-                settings = {};
+        updateHtml: function(args) {
+            args = $.extend({target: null, action: null, data: null, settings: null}, args);
+            if (args.settings === null || typeof args.settings !== 'object') {
+                args.settings = {};
             }
-            target = $(target);
-            settings.dataType = 'html';
-            return this.run(action, data, settings).done(function(html) {
-                $(target).html(html);
+            if (!$(args.target).length) {
+                return false;
+            }
+            args.settings.dataType = 'html';
+            return this.run(args.action, args.data, args.settings).done(function(html) {
+                $(args.target).html(html);
             });
         },
         jsonEvent: function(jsonEvent, action, data, settings) {
@@ -86,18 +89,19 @@ var Tela = {};
             }
             return settings;
         },
-        getPostData: function(source, context, args) {
+        getPostData: function(args) {
+            args = $.extend({source: null, context: null, options: null}, args);
             var postdata = {};
-            if ($.isFunction(source)) {
-                if (typeof context !== 'object') {
-                    context = this;
+            if ($.isFunction(args.source)) {
+                if (typeof args.context !== 'object') {
+                    args.context = this;
                 }
-                if (typeof args === 'undefined') {
-                    args = null;
+                if (typeof args.options === 'undefined') {
+                    args.options = null;
                 }
-                postdata = source.apply(context, [args]);
-            } else if (typeof source === 'object') {
-                postdata = source;
+                postdata = args.source.apply(args.context, [args.options]);
+            } else if (typeof args.source === 'object') {
+                postdata = args.source;
             }
             return postdata;
         },
@@ -107,13 +111,9 @@ var Tela = {};
                 var id = $(this).attr('id');
                 if (typeof id === 'string' && id !== '') {
                     selector = '#' + id;
-                } else {
-                    selector = false;
                 }
-            } else {
-                selector = false;
             }
-            return selector;
+            return (typeof selector !== 'string' || selector === '') ? false : selector;
         },
         response: function(response, settings) {
             if (typeof response !== 'object') {
@@ -129,85 +129,101 @@ var Tela = {};
                 response.always(settings.always);
             }
             return response;
+        },
+        runCallerAction: function(caller, settings) {
+            var args = {
+                source: settings.data,
+                context: caller
+            };
+            var postdata = Tela.PluginHelpers.getPostData.apply(caller, [args]);
+            var responseArgs = [settings.action, postdata, settings.ajax];
+            var response = Tela.Ajax.run.apply(Tela.Ajax, responseArgs);
+            return Tela.PluginHelpers.response(response, settings);
+        }
+    };
+
+    Tela.PluginMethods = {
+        subjectEvent: function(settings) {
+            var caller = this;
+            if (typeof settings.subject === 'string' && settings.subject !== '') {
+                var target = this;
+                $(document).on(settings.event, settings.subject, function() {
+                    var dataArgs = {
+                        source: settings.data,
+                        context: this
+                    };
+                    var args = {
+                        target: target,
+                        action: settings.action,
+                        data: Tela.PluginHelpers.getPostData.apply(caller, [dataArgs]),
+                        settings: settings.ajax
+                    };
+                    return Tela.Ajax.updateHtml.apply(Tela.Ajax, [args]);
+                });
+            }
+        },
+        globalEvent: function(settings) {
+            var caller = this;
+            var triggerer = settings.updateOn === 'global-event' ? $(window) : $(document);
+            triggerer.on(settings.event, function() {
+                var dataArgs = {
+                    source: settings.data,
+                    context: caller,
+                    options: arguments
+                };
+                var args = {
+                    target: caller,
+                    action: settings.action,
+                    data: Tela.PluginHelpers.getPostData.apply(caller, [dataArgs]),
+                    settings: settings.ajax
+                };
+                return Tela.Ajax.updateHtml.apply(Tela.Ajax, [args]);
+            });
+        },
+        selfEvent: function(settings) {
+            var caller = this;
+            $(this).on(settings.event, function() {
+                var dataArgs = {
+                    source: settings.data,
+                    context: caller
+                };
+                var args = {
+                    target: caller,
+                    action: settings.action,
+                    data: Tela.PluginHelpers.getPostData.apply(caller, [dataArgs]),
+                    settings: settings.ajax
+                };
+                return Tela.Ajax.updateHtml.apply(Tela.Ajax, [args]);
+            });
+        },
+        runAction: function(settings) {
+            var caller = this;
+            var selector = Tela.PluginHelpers.getSelector.apply(caller);
+            if (typeof selector === 'string' && selector !== '') {
+                $(document).on(settings.event, selector, function() {
+                    return Tela.PluginHelpers.runCallerAction(this, [caller, settings]);
+                });
+            } else {
+                $(caller).on(settings.event, function() {
+                    return Tela.PluginHelpers.runCallerAction(this, [caller, settings]);
+                });
+            }
         }
     };
 
     $.fn.telaAjax = function(settings) {
-        var caller = this;
-        settings = Tela.PluginHelpers.init.apply(caller, [settings]);
-        var postdata = {};
+        settings = Tela.PluginHelpers.init.apply(this, [settings]);
         switch (settings.updateOn) {
             case 'subject-event' :
-                if (typeof settings.subject === 'string' && settings.subject !== '') {
-                    var target = this;
-                    $(document).on(settings.event, settings.subject, function() {
-                        postdata = Tela.PluginHelpers.getPostData.apply(
-                                caller,
-                                [settings.data, this]
-                                );
-                        return Tela.Ajax.updateHtml.apply(
-                                Tela.Ajax,
-                                [target, settings.action, postdata, settings.ajax]
-                                );
-                    });
-                }
-                break;
+                return Tela.PluginMethods.subjectEvent.apply(this, [settings]);
             case 'global-event' :
             case 'document-event' :
-                var triggerer = settings.updateOn === 'global-event' ? $(window) : $(document);
-                triggerer.on(settings.event, function() {
-                    var postdataargs = arguments;
-                    postdata = Tela.PluginHelpers.getPostData.apply(
-                            caller,
-                            [settings.data, caller, postdataargs]
-                            );
-                    return Tela.Ajax.updateHtml.apply(
-                            Tela.Ajax,
-                            [caller, settings.action, postdata, settings.ajax]
-                            );
-                });
-                break;
+                return Tela.PluginMethods.globalEvent.apply(this, [settings]);
             case 'self-event' :
-                $(this).on(settings.event, function() {
-                    postdata = Tela.PluginHelpers.getPostData.apply(
-                            caller,
-                            [settings.data, caller]
-                            );
-                    return Tela.Ajax.updateHtml.apply(
-                            Tela.Ajax, [caller, settings.action, postdata, settings.ajax]
-                            );
-                });
-                break;
+                return Tela.PluginMethods.selfEvent.apply(this, [settings]);
             default :
-                var response = null;
-                var selector = Tela.PluginHelpers.getSelector.apply(caller);
-                if (selector) {
-                    $(document).on(settings.event, selector, function() {
-                        postdata = Tela.PluginHelpers.getPostData.apply(
-                                caller,
-                                [settings.data, caller]
-                                );
-                        response = Tela.Ajax.run.apply(
-                                Tela.Ajax,
-                                [settings.action, postdata, settings.ajax]
-                                );
-                        return Tela.PluginHelpers.response(response, settings);
-                    });
-                } else {
-                    $(caller).on(settings.event, function() {
-                        postdata = Tela.PluginHelpers.getPostData.apply(
-                                caller,
-                                [settings.data, caller]
-                                );
-                        response = Tela.Ajax.run.apply(
-                                Tela.Ajax,
-                                [settings.action, postdata, settings.ajax]
-                                );
-                        return Tela.PluginHelpers.response(response, settings);
-                    });
-                }
+                return Tela.PluginMethods.runAction.apply(this, [settings]);
         }
         return this;
-    }
-    ;
-})(jQuery, TelaAjaxData, window, Tela);
+    };
+})(jQuery, TelaAjaxData, window, Tela); // TelaAjaxData comes from wp_localize_script
