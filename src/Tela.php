@@ -91,7 +91,7 @@ class Tela {
      * Init instance once on 'wp_loaded' hook, acts differently when called during an ajax request.
      */
     public function init() {
-        if ( ! $this->init ) {
+        if ( ! $this->init && ! ( did_action( 'wp_loaded' ) || doing_action( 'wp_loaded' ) ) ) {
             add_action( 'wp_loaded', function() {
                 $this->init = TRUE;
                 $id = $this->getId();
