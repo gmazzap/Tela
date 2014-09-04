@@ -4,6 +4,7 @@ class Action implements ActionInterface {
 
     protected static $defaults = [
         'public'        => FALSE,
+        'side'          => 'both',
         'data_sanitize' => NULL,
         'send_json'     => TRUE,
         'json_validate' => NULL

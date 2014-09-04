@@ -24,14 +24,16 @@ class Tela {
         if ( ! isset( self::$instances[ $id ] ) ) {
             $class = get_called_class();
             self::$instances[ $id ] = new $class( $shared, $action_class, $id );
+            self::$instances[ $id ]->init();
         }
         return self::$instances[ $id ];
     }
 
     public function __construct( $shared = NULL, $action_class = '\GM\Faber\Action', $id = NULL ) {
         if ( empty( $id ) || ! is_string( $id ) ) {
-            $this->id = uniqid( 'tela_' );
+            $id = uniqid( 'tela_' );
         }
+        $this->id = $id;
         $this->action_class = $action_class;
         if ( ! is_null( $shared ) ) {
             $this->shared = $shared;
@@ -44,9 +46,13 @@ class Tela {
 
     public function init() {
         if ( ! $this->init ) {
-            $this->init = TRUE;
-            $this->salt = wp_create_nonce( "tela_" . $this->getId() );
-            return defined( 'DOING_AJAX' ) && DOING_AJAX ? $this->initAjax() : $this->initFront();
+            add_action( 'wp_loaded', function() {
+                $this->init = TRUE;
+                $id = $this->getId();
+                $this->salt = wp_create_nonce( "tela_{$id}" );
+                do_action( "tela_register_{$id}", $this );
+                return defined( 'DOING_AJAX' ) && DOING_AJAX ? $this->initAjax() : $this->initFront();
+            }, 0 );
         }
     }
 
@@ -63,14 +69,7 @@ class Tela {
         }
         try {
             if ( ! isset( $this->actions[ $action ] ) ) {
-                $action_obj = $this->getActionInstance( $action, $action_class );
-                $action_obj->setBlogId( get_current_blog_id() );
-                $action_obj->setNonceSalt( $this->salt );
-                $action_obj->setCallback( $callback );
-                $action_obj->setArgs( $args );
-                $nonce = $action_obj->getNonce();
-                $this->actions[ $action ] = $action_obj;
-                $this->nonces[ $action ] = $nonce;
+                return $this->buildAction( $action, $callback, $args, $action_class );
             }
         } catch ( \Exception $e ) {
             return $this->error( get_class( $e ), $e->getMessage(), $e );
@@ -80,6 +79,9 @@ class Tela {
 
     public function run() {
         if ( ! ( $vars = $this->check() ) ) {
+            $vars = $this->getRequestVars();
+            /* Chance to die() something different than '0' */
+            do_action( 'tela_not_pass_check', $this->getAction( $vars[ 'action' ] ), $vars );
             return;
         }
         $sanitize_cb = $this->getActionVar( $vars[ 'action' ], 'data_sanitize' );
@@ -93,7 +95,10 @@ class Tela {
         ob_start();
         $data = call_user_func_array( $callback, $args );
         $output = ob_get_clean();
-        $this->handleExit( $vars[ 'action' ], $data, $output );
+        if ( empty( $data ) && ! empty( $output ) ) { // callbacks are echoing instead of return?
+            $data = $output;
+        }
+        $this->handleExit( $vars[ 'action' ], $data );
     }
 
     public function getActionInstance( $id, $class = NULL ) {
@@ -114,6 +119,20 @@ class Tela {
 
     /* Internal Stuff */
 
+    private function buildAction( $action, $callback, $args, $action_class ) {
+        $action_obj = $this->getActionInstance( $action, $action_class );
+        $action_obj->setBlogId( get_current_blog_id() );
+        $action_obj->setNonceSalt( $this->salt );
+        $nonce = $action_obj->getNonce();
+        $this->nonces[ $action ] = $nonce;
+        if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
+            return $action_obj;
+        }
+        $action_obj->setCallback( $callback );
+        $action_obj->setArgs( $args );
+        $this->actions[ $action ] = $action_obj;
+    }
+
     private function check() {
         if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX || ! $this->checkUrlVars() ) {
             return FALSE;
@@ -123,20 +142,22 @@ class Tela {
         if (
             ! $action instanceof Tela\ActionInterface
             || ( ! $action->getVar( 'access' ) && ! is_user_logged_in() )
+            || ( $action->getVar( 'side' ) === 'front' && is_admin() )
+            || ( $action->getVar( 'side' ) === 'back' && ! is_admin() )
             || $action->getBlogId() !== $request[ 'blogid' ]
         ) {
             return FALSE;
         }
         $salt = $action->getNonceSalt();
-        $decoded_nonce = base64_decode( $this->nonces[ $request[ 'nonce' ] ] );
+        $decoded_nonce = base64_decode( $this->nonces[ $request[ 'action' ] ] );
         $check = preg_replace( "#^{$salt}#", '', $decoded_nonce, 1 );
         return wp_verify_nonce( $check, $request[ 'action' ] ) ? $request : FALSE;
     }
 
-    private function handleExit( $action, $data, $output = '' ) {
+    private function handleExit( $action, $data ) {
         $json = $this->getAction( $action )->getVar( 'json' );
         if ( empty( $json ) ) {
-            wp_die( $output );
+            wp_die( $data );
         }
         if ( is_callable( $json ) ) {
             if ( call_user_func( $json, $data ) ) {
@@ -150,10 +171,8 @@ class Tela {
 
     private function initAjax() {
         if ( $this->checkUrlVars() ) {
-            $id = $this->getId();
-            do_action( "tela_register_{$id}", $this );
-            add_action( "wp_ajax_telaajax_proxy", [ $this->getProxy(), 'run' ] );
-            add_action( "wp_ajax_nopriv_telaajax_proxy", [ $this->getProxy(), 'run' ] );
+            add_action( "wp_ajax_telaajax_proxy", [ $this, 'run' ] );
+            add_action( "wp_ajax_nopriv_telaajax_proxy", [ $this, 'run' ] );
         }
     }
 
@@ -161,21 +180,21 @@ class Tela {
         if ( wp_script_is( 'tela_ajax' ) ) {
             return;
         }
-        $hook = is_admin() ? 'admin_enqueue_scripts' : ' wp_enqueue_scripts';
+        $hook = is_admin() ? 'admin_enqueue_scripts' : 'wp_enqueue_scripts';
         add_action( $hook, function() {
             $min = defined( 'WP_DEBUG' ) && WP_DEBUG ? '.min' : '';
             $relative = "js/tela_ajax{$min}.js";
-            $path = plugins_dir_path( __FILE__ ) . $relative;
-            $url = plugins_url( $relative, __FILE__ );
+            $path = plugin_dir_path( dirname( __FILE__ ) ) . $relative;
+            $url = plugins_url( $relative, dirname( __FILE__ ) );
             $ver = @filemtime( $path ) ? : uniqid();
             $url_args = [
                 'telaajax' => '1',
                 'action'   => 'telaajax_proxy',
                 'bid'      => get_current_blog_id()
             ];
-            $data = (object) [
-                    'ajax_url' => add_query_arg( $url_args, admin_url( 'admin-ajax.php' ) ),
-                    'nonces'   => (object) $this->nonces
+            $data = [
+                'ajax_url' => add_query_arg( $url_args, admin_url( 'admin-ajax.php' ) ),
+                'nonces'   => (object) $this->nonces
             ];
             wp_enqueue_script( 'tela_ajax', $url, [ 'jquery' ], $ver, TRUE );
             wp_localize_script( 'tela_ajax', 'TelaAjaxData', $data );
@@ -219,11 +238,11 @@ class Tela {
         return $vars[ 'is' ]
             && ! empty( $vars[ 'action' ] )
             && ! empty( $vars[ 'nonce' ] )
-            && ! empty( $vars[ 'bid' ] );
+            && ! empty( $vars[ 'blogid' ] );
     }
 
     private function error( $code = 'general', $message = '', $data = NULL ) {
-        return new Tela\Error( 'tela-error-' . $code, $message, $data );
+        return new Tela\Error( "tela-error-{$code}", $message, $data );
     }
 
 }
