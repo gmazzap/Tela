@@ -2,10 +2,19 @@
 
 class Tela {
 
+    const BACKEND = 10;
+    const FRONTEND = 20;
+    const BOTHSIDES = 30;
+
     /**
      * @var array Contains the intsnace ids
      */
     private static $instances;
+
+    /**
+     * @var string Handle for the main javascript file
+     */
+    private static $js_handle;
 
     /**
      * @var string Instance id
@@ -13,9 +22,9 @@ class Tela {
     private $id;
 
     /**
-     * @var string Default action class name
+     * @var GM\Tela\Factory
      */
-    private $action_class;
+    private $factory;
 
     /**
      * @var mixed Variable to be passed to all the registered ajax callbacks
@@ -33,6 +42,11 @@ class Tela {
     private $actions = [ ];
 
     /**
+     * @var int Count for registered action on current "side" (frontend / backend)
+     */
+    private $on_side = 0;
+
+    /**
      * @var array Contains all salted and base64-encoded  nonces for registered action.
      */
     private $nonces = [ ];
@@ -48,43 +62,94 @@ class Tela {
      * @param string $id
      * @return GM\Tela
      */
-    static function instance( $id, $shared = NULL, $action_class = NULL ) {
+    final static function instance( $id, $shared = NULL, Tela\Factory $factory = NULL ) {
         if ( ! is_string( $id ) ) {
             return $this->error( 'bad-id', 'Tela instance id must be a string.' );
         }
         if ( ! isset( self::$instances[ $id ] ) ) {
             $class = get_called_class();
-            self::$instances[ $id ] = new $class( $shared, $action_class, $id );
-            self::$instances[ $id ]->init();
+            if ( is_null( $factory ) ) {
+                $factory = new Tela\Factory;
+            }
+            $tela = new $class( $id, $factory, $shared );
+            if ( $factory->getTelaId() !== $id ) {
+                $factory->setTelaId( $id );
+            }
+            if ( ! isset( self::$instances[ $id ] ) || self::$instances[ $id ] !== $tela ) {
+                self::$instances[ $id ] = $tela;
+            }
+            $tela->init();
         }
         return self::$instances[ $id ];
     }
 
     /**
+     * Getter for handle object.
+     *
+     * @return string
+     */
+    public static function getJsHandle() {
+        return self::$js_handle;
+    }
+
+    /**
+     * Wrapper for wp_enqueue_script() can be used to quickly add js having Tela js as dependency.
+     *
+     * @param type $handle
+     * @param type $url
+     * @param type $deps
+     * @param type $ver
+     * @return void
+     * @see http://codex.wordpress.org/Function_Reference/wp_enqueue_script
+     */
+    public static function enqueueJs( $handle = '', $url = '', $deps = [ ], $ver = NULL ) {
+        if (
+            ! is_string( $handle )
+            || ! filter_var( $url, FILTER_VALIDATE_URL )
+            || ! is_string( self::getJsHandle() )
+        ) {
+            return;
+        }
+        $deps = array_filter( (array) $deps, 'is_string' );
+        array_unshift( $deps, self::getJsHandle() );
+        array_unshift( $deps, 'jquery' );
+        wp_enqueue_script( $handle, $url, array_filter( array_unique( $deps ) ), $ver, TRUE );
+    }
+
+    /**
      * Constructor
      *
-     * @param mixed $shared Variable to be passed to every ajax callback
-     * @param string $action_class Default class name for action objects (overridable on action basis)
      * @param string $id Instance id, if mitted will be auto-generated.
+     * @param mixed $shared Variable to be passed to every ajax callback
      */
-    public function __construct( $shared = NULL, $action_class = '\GM\Faber\Action', $id = NULL ) {
+    public function __construct( $id, Tela\Factory $factory, $shared = NULL ) {
         if ( empty( $id ) || ! is_string( $id ) ) {
             $id = uniqid( 'tela_' );
         }
+        $factory->setTelaId( $id );
         $this->id = $id;
-        $this->action_class = $action_class;
+        $this->factory = $factory;
         if ( ! is_null( $shared ) ) {
             $this->shared = $shared;
         }
     }
 
     /**
-     * Getter for id properties.
+     * Getter for id property.
      *
      * @return string
      */
     public function getId() {
         return $this->id;
+    }
+
+    /**
+     * Getter for factory object.
+     *
+     * @return \GM\Tela\Factory
+     */
+    public function getFactory() {
+        return $this->factory;
     }
 
     /**
@@ -106,31 +171,28 @@ class Tela {
      * Method to be used to register ajax callbacks.
      * Should be called on "tela_register_{$id}" action hook or on "wp_loaded".
      *
-     * @param string $action Action id, must be unique per tela instance
+     * @param string $action Action id, must be unique for tela instance.
      * @param callable $callback Ajax callback
-     * @param array $args Args to be passed to callback
+     * @param array $args Action args
      * @param GM\Tela\ActionInterface $action_class Class name to be used for action object instance
      * @return GM\Tela\ActionInterface
      */
     public function register( $action, $callback, Array $args = [ ], $action_class = '' ) {
-        if ( ! $this->init ) {
-            $id = $this->getId();
-            $error = "Please use 'tela_register_{$id}' action to register your Tela callbacks.";
+        $action = $this->getId() . "::{$action}";
+        $args = $this->sanitizeArgs( $args );
+        if ( ! $this->isAjax() ) {
+            return $this->registerOnFront( $action, $args );
         }
-        if ( ! is_string( $action ) || ! is_callable( $callback ) ) {
-            $error = 'Please use string action name and valid callback when register a Tela callback.';
-        }
-        if ( isset( $error ) ) {
-            return $this->error( 'bad-register-args', $error, compact( 'action', 'callback' ) );
+        $check = $this->checkRegisterVars( $action, $callback );
+        if ( is_wp_error( $check ) ) {
+            return $check;
         }
         try {
-            if ( ! isset( $this->actions[ $action ] ) ) {
-                return $this->buildAction( $action, $callback, $args, $action_class );
-            }
+            $regitered = $this->buildAction( $action, $callback, $args, $action_class );
         } catch ( \Exception $e ) {
-            return $this->error( get_class( $e ), $e->getMessage(), $e );
+            $regitered = $this->error( get_class( $e ), $e->getMessage(), $e );
         }
-        return $this->actions[ $action ];
+        return $regitered;
     }
 
     /**
@@ -140,13 +202,13 @@ class Tela {
      */
     public function run() {
         $vars = $this->getRequestVars();
-        if ( ! $this->isAjax() || ! $this->check( $vars ) ) {
+        if ( ! $this->isAjax() || $this->check( $vars ) !== TRUE ) {
             return $this->isAjax() ? $this->handleBadExit( $vars ) : NULL;
         }
         /**
          * @var GM\Tela\ActionInterface
          */
-        $action = $this->getAction( $action );
+        $action = $this->getAction( $vars[ 'action' ] );
         $sanitize_cb = $action->getVar( 'data_sanitize' );
         if ( is_callable( $sanitize_cb ) ) {
             $vars[ 'data' ] = call_user_func( $sanitize_cb, $vars[ 'data' ] );
@@ -164,29 +226,6 @@ class Tela {
     }
 
     /**
-     * Instantiate and return an action object.
-     *
-     * @param string $id Id to be set on the action object
-     * @param string $class Class name for the action. class must implement GM\Tela\ActionInterface
-     * @return \GM\Tela\ActionInterface
-     */
-    public function getActionInstance( $id, $class = NULL ) {
-        $default = '\GM\Tela\Action';
-        if ( empty( $class ) || ! is_string( $class ) ) {
-            $class = $this->action_class ? : $default;
-        }
-        if ( ! class_exists( $class ) ) {
-            $class = $default;
-        } elseif ( $class !== $default ) {
-            $ref = new \ReflectionClass( $class );
-            if ( ! $ref->implementsInterface( '\GM\Tela\ActionInterface' ) ) {
-                $class = $default;
-            }
-        }
-        return new $class( $id );
-    }
-
-    /**
      * Check if a string is a valid action id
      *
      * @param string $i The string to check
@@ -199,6 +238,15 @@ class Tela {
     }
 
     /**
+     * Check if there are any registered action for current side
+     *
+     * @return boolean
+     */
+    public function hasActions() {
+        return $this->on_side > 0 || ( $this->isAjax() && count( $this->actions ) > 0 );
+    }
+
+    /**
      * Take an register action id and return the related action object (if exists).
      *
      * @param string $action
@@ -206,6 +254,60 @@ class Tela {
      */
     public function getAction( $action ) {
         return $this->isAction( $action ) ? $this->actions[ $action ] : NULL;
+    }
+
+    public function getNonceForAction( $action ) {
+        return isset( $this->nonces[ $action ] ) ? $this->nonces[ $action ] : '';
+    }
+
+    /**
+     * Get and sanitize Tela-related variables from $_GET and $_POST and return them in a single
+     * indexd array.
+     *
+     * @return array
+     * @access private
+     */
+    public function getRequestVars() {
+        $input_post = filter_input_array( INPUT_POST, [
+            'telaajax_action'   => FILTER_SANITIZE_STRING,
+            'telaajax_nonce'    => FILTER_SANITIZE_STRING,
+            'telaajax_is_admin' => FILTER_SANITIZE_NUMBER_INT,
+            'telaajax_data'     => FILTER_REQUIRE_ARRAY
+            ] );
+        $input_get = filter_input_array( INPUT_GET, [
+            'telaajax' => FILTER_SANITIZE_NUMBER_INT,
+            'bid'      => FILTER_SANITIZE_NUMBER_INT,
+            ] );
+        return [
+            'action'     => $input_post[ 'telaajax_action' ],
+            'nonce'      => $input_post[ 'telaajax_nonce' ],
+            'data'       => (array) $input_post[ 'telaajax_data' ],
+            'from_admin' => (int) $input_post[ 'telaajax_is_admin' ] > 0,
+            'is_tela'    => (int) $input_get[ 'telaajax' ] > 0,
+            'blogid'     => (int) $input_get[ 'bid' ]
+        ];
+    }
+
+    /**
+     * Check arguments sanity for register() method
+     *
+     * @param string $action
+     * @param callable $callback
+     * @return GM\Tela\Error|void
+     */
+    public function checkRegisterVars( $action, $callback ) {
+        $error = '';
+        if ( ! $this->init ) {
+            $id = $this->getId();
+            $error .= "Please use 'tela_register_{$id}' action to register your Tela callbacks.";
+        }
+        if ( ! is_string( $action ) || ! is_callable( $callback ) ) {
+            $error .= $error === '' ? '' : ' ';
+            $error .= 'Name and/or callback not valid to register a Tela callback.';
+        }
+        if ( ! empty( $error ) ) {
+            return $this->error( 'register-error', $error, [ $action, $callback ] );
+        }
     }
 
     /**
@@ -223,33 +325,90 @@ class Tela {
         return is_null( $action ) ? $action : $action->getVar( $i );
     }
 
+    /**
+     * Check if current http request is an ajax one looking at WordPress constant or server var.
+     *
+     * @return boolean
+     * @access private
+     *
+     */
+    public function isAjax() {
+        return ( defined( 'DOING_AJAX' ) && DOING_AJAX )
+            || 'xmlhttprequest' === strtolower( filter_input(
+                    INPUT_SERVER, 'HTTP_X_REQUESTED_WITH', FILTER_SANITIZE_STRING
+                )
+        );
+    }
+
     /* Internal Stuff */
+
+    /**
+     *
+     *
+     * @param string $action Action id
+     * @param array $args Action arguments
+     */
+    private function registerOnFront( $action, Array $args = [ ] ) {
+        $not_on_side = is_admin() ? self::FRONTEND : self::BACKEND;
+        if ( $args[ 'side' ] !== $not_on_side ) {
+            $this->on_side ++;
+            $this->nonces[ $action ] = $this->buildNonce( $action );
+        }
+    }
+
+    /**
+     * Ensure consistency for action arguments
+     *
+     * @param array $args
+     * @return array
+     */
+    private function sanitizeArgs( Array $args, $sanitizer_class = NULL ) {
+        /** @var Tela\ArgsSanitizerInterface */
+        $sanitizer = $this->getFactory()->factory( 'sanitizer', $sanitizer_class );
+        if ( is_wp_error( $sanitizer ) ) {
+            return $sanitizer;
+        }
+        $this->sanitizer = $sanitizer;
+        return $sanitizer->sanitize( $args );
+    }
 
     /**
      * Instantiate an action object and setup it according to argumants.
      *
      * @param string $action Action object id
      * @param callable $callback Callback for the action
-     * @param array $args Arguments to be passed to action callback
+     * @param array $args Action arguments
      * @param string $action_class Action class name, class must implement GM\Tela\ActionInterface
      * @return void|GM\Tela\ActionInterface Return the action object during non-ajax requests
-     * @access protected
+     * @access private
      */
-    protected function buildAction( $action, $callback, $args, $action_class ) {
-        /**
-         * @var GM\Tela\ActionInterface
-         */
-        $action_obj = $this->getActionInstance( $action, $action_class );
-        $action_obj->setBlogId( get_current_blog_id() );
-        $action_obj->setNonceSalt( $this->salt );
-        $nonce = $action_obj->getNonce();
-        $this->nonces[ $action ] = $nonce;
-        if ( ! defined( 'DOING_AJAX' ) || ! DOING_AJAX ) {
+    private function buildAction( $action, $callback, $args, $action_class ) {
+        if ( $this->isAction( $action ) ) {
+            return FALSE;
+        }
+        /** @var Tela\ActionInterface */
+        $action_obj = $this->getFactory()->factory( 'action', $action_class, [ $action ] );
+        if ( is_wp_error( $action_obj ) ) {
             return $action_obj;
         }
+        $action_obj->setBlogId( get_current_blog_id() );
+        $nonce = $this->buildNonce( $action );
+        $action_obj->setNonce( $nonce );
         $action_obj->setCallback( $callback );
         $action_obj->setArgs( $args );
+        $this->nonces[ $action ] = $nonce;
         $this->actions[ $action ] = $action_obj;
+        return $action_obj;
+    }
+
+    /**
+     * Build a nonce for the action
+     *
+     * @param string $action Action id
+     * @return string
+     */
+    private function buildNonce( $action ) {
+        return base64_encode( $this->salt . wp_create_nonce( $action ) );
     }
 
     /**
@@ -259,28 +418,21 @@ class Tela {
      * @return boolean
      * @access private
      */
-    private function check( $request = NULL ) {
-        if ( ! $this->isAjax() || ! $this->checkUrlVars( $request ) ) {
+    private function check( Array $vars = [ ], $checker_class = NULL ) {
+        if ( empty( $vars ) ) {
+            $vars = $this->getRequestVars();
+        }
+        $action = isset( $vars[ 'action' ] ) ? $this->getAction( $vars[ 'action' ] ) : FALSE;
+        if ( ! $action instanceof Tela\ActionInterface ) {
             return FALSE;
         }
-        if ( ! is_array( $request ) ) {
-            $request = $this->getRequestVars();
+        /** @var Tela\AjaxCheckerInterface */
+        $checker = $this->getFactory()->factory( 'checker', $checker_class, [ $vars, $action ] );
+        if ( is_wp_error( $checker ) ) {
+            return $checker;
         }
-        /**
-         * @var GM\Tela\ActionInterface
-         */
-        $action = $this->getAction( $request[ 'action' ] );
-        if (
-            ! $action instanceof Tela\ActionInterface
-            || ( ! $action->getVar( 'access' ) && ! is_user_logged_in() )
-            || $action->getBlogId() !== $request[ 'blogid' ]
-        ) {
-            return FALSE;
-        }
-        $salt = $action->getNonceSalt();
-        $decoded_nonce = base64_decode( $this->nonces[ $request[ 'action' ] ] );
-        $check = preg_replace( "#^{$salt}#", '', $decoded_nonce, 1 );
-        return wp_verify_nonce( $check, $request[ 'action' ] );
+        return $checker->checkRequest()
+            && $checker->checkNonce( $this->getNonceForAction( $action->getId() ), $this->salt );
     }
 
     /**
@@ -318,9 +470,10 @@ class Tela {
             $vars = $this->getRequestVars();
         }
         if ( isset( $vars[ 'is_tela' ] ) ) {
-            // Chance to die() something different than default WordPress '0'
+            // Chance to die() something different than default
             $action = $this->getAction( $vars[ 'action' ] );
             do_action( 'tela_not_pass_check', $action, $vars, $this );
+            wp_die( '' );
         }
         return FALSE;
     }
@@ -332,7 +485,8 @@ class Tela {
      * @access private
      */
     private function initAjax() {
-        if ( $this->checkUrlVars() ) {
+        $vars = $this->getRequestVars();
+        if ( isset( $vars[ 'is_tela' ] ) && $vars[ 'is_tela' ] ) {
             add_action( "wp_ajax_telaajax_proxy", [ $this, 'run' ] );
             add_action( "wp_ajax_nopriv_telaajax_proxy", [ $this, 'run' ] );
         }
@@ -344,87 +498,23 @@ class Tela {
      * @return void
      * @access private
      */
-    private function initFront() {
-        if ( wp_script_is( 'tela_ajax' ) ) {
+    private function initFront( $manager_class = NULL ) {
+        static $js_manager = NULL;
+        if ( ! $this->hasActions() ) {
             return;
         }
-        $hook = is_admin() ? 'admin_enqueue_scripts' : 'wp_enqueue_scripts';
-        add_action( $hook, function() {
-            $min = defined( 'WP_DEBUG' ) && WP_DEBUG ? '.min' : '';
-            $relative = "js/tela_ajax{$min}.js";
-            $path = plugin_dir_path( dirname( __FILE__ ) ) . $relative;
-            $url = plugins_url( $relative, dirname( __FILE__ ) );
-            $ver = @filemtime( $path ) ? : uniqid();
-            $url_args = [
-                'telaajax' => '1',
-                'action'   => 'telaajax_proxy',
-                'bid'      => get_current_blog_id()
-            ];
-            $data = [
-                'ajax_url' => add_query_arg( $url_args, admin_url( 'admin-ajax.php' ) ),
-                'nonces'   => (object) $this->nonces
-            ];
-            wp_enqueue_script( 'tela_ajax', $url, [ 'jquery' ], $ver, TRUE );
-            wp_localize_script( 'tela_ajax', 'TelaAjaxData', $data );
-        } );
-    }
-
-    /**
-     * Get and sanitize Tela-related variables from $_GET and $_POST and return them in a single
-     * indexd array.
-     *
-     * @return array
-     * @access private
-     */
-    private function getRequestVars() {
-        $posted = filter_input_array( INPUT_POST, [
-            'telaajax_action' => FILTER_SANITIZE_STRING,
-            'telaajax_nonce'  => FILTER_SANITIZE_STRING,
-            'telaajax_data'   => FILTER_REQUIRE_ARRAY
-            ] );
-        $qs = filter_input_array( INPUT_GET, [
-            'telaajax' => FILTER_SANITIZE_NUMBER_INT,
-            'bid'      => FILTER_SANITIZE_NUMBER_INT,
-            ] );
-        return [
-            'action'  => $posted[ 'telaajax_action' ],
-            'nonce'   => $posted[ 'telaajax_nonce' ],
-            'data'    => (array) $posted[ 'telaajax_data' ],
-            'is_tela' => (int) $qs[ 'telaajax' ] > 0,
-            'blogid'  => (int) $qs[ 'bid' ]
-        ];
-    }
-
-    /**
-     * Check if http request ($_GET and $_POST) contains valid Tela-related variables.
-     *
-     * @param array $vars Var array to check, if not given is retrieved from superglobals
-     * @return boolean
-     * @access private
-     */
-    private function checkUrlVars( $vars = NULL ) {
-        if ( ! is_array( $vars ) ) {
-            $vars = $this->getRequestVars();
+        if ( is_null( $js_manager ) ) {
+            /** @var Tela\JsManagerInstance */
+            $js_manager = $this->getFactory()->factory( 'jsmanager', $manager_class );
+            if ( is_wp_error( $js_manager ) ) {
+                return $js_manager;
+            }
+            self::$js_handle = $js_manager->getHandle();
         }
-        return $vars[ 'is_tela' ]
-            && ! empty( $vars[ 'action' ] )
-            && ! empty( $vars[ 'nonce' ] )
-            && ! empty( $vars[ 'blogid' ] );
-    }
-
-    /**
-     * Check if current http request is an ajax one looking at WordPress constant or server var.
-     *
-     * @return boolean
-     * @access private
-     *
-     */
-    private function isAjax() {
-        return ( defined( 'DOING_AJAX' ) && DOING_AJAX )
-            || 'xmlhttprequest' === strtolower( filter_input(
-                    INPUT_SERVER, 'HTTP_X_REQUESTED_WITH', FILTER_SANITIZE_STRING
-                )
-        );
+        $js_manager->addNonces( $this->nonces );
+        if ( ! $js_manager->enabled() ) {
+            $js_manager->enable();
+        }
     }
 
     /**

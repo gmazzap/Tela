@@ -10,9 +10,9 @@ interface ActionInterface {
 
     public function getVar( $var );
 
-    public function getNonceSalt();
-
     public function getNonce();
+
+    public function setNonce( $nonce );
 
     public function setId( $id );
 
@@ -24,5 +24,7 @@ interface ActionInterface {
 
     public function setVar( $var );
 
-    public function setNonceSalt( $salt );
+    public function isPublic();
+
+    public function sanitize();
 }

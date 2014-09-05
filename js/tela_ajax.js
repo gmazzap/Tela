@@ -1,5 +1,5 @@
 var Tela = {};
-(function($, TData, window, Tela) {
+(function($, _Data, Nonces, Tela, window) {
 
     Tela.Ajax = {
         run: function(action, data, configs) {
@@ -12,16 +12,17 @@ var Tela = {};
             if (data === null || typeof data !== 'object') {
                 data = {};
             }
-            if (typeof TData.nonces[action] === 'undefined') {
-                TData.nonces[action] = '';
+            if (typeof Nonces.nonces[action] === 'undefined') {
+                Nonces.nonces[action] = '';
             }
             var settings = $.extend(
                     configs,
                     {
-                        url: TData.ajax_url,
+                        url: _Data.url,
                         data: {
+                            telaajax_is_admin: _Data.is_admin,
                             telaajax_action: action,
-                            telaajax_nonce: TData.nonces[action],
+                            telaajax_nonce: Nonces.nonces[action],
                             telaajax_data: data
                         },
                         type: "POST"
@@ -226,4 +227,6 @@ var Tela = {};
         }
         return this;
     };
-})(jQuery, TelaAjaxData, window, Tela); // TelaAjaxData comes from wp_localize_script
+
+// TelaAjaxUrl and TelaAjaxDataNonces comes from wp_localize_script
+})(jQuery, TelaAjaxData, TelaAjaxNonces, Tela, window);

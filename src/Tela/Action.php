@@ -4,7 +4,6 @@ class Action implements ActionInterface {
 
     protected static $defaults = [
         'public'        => FALSE,
-        'side'          => 'both',
         'data_sanitize' => NULL,
         'send_json'     => TRUE,
         'json_validate' => NULL
@@ -13,8 +12,8 @@ class Action implements ActionInterface {
     private $blogid;
     private $args;
     private $callback;
-    private $nonce_salt;
     private $nonce;
+    private $sanitizer;
 
     public function __construct( $id, Array $args = [ ] ) {
         $this->setId( $id );
@@ -42,15 +41,12 @@ class Action implements ActionInterface {
         return isset( $this->args[ $var ] ) ? $this->args[ $var ] : NULL;
     }
 
-    public function getNonceSalt() {
-        return $this->nonce_salt;
+    public function getNonce() {
+        return $this->nonce;
     }
 
-    public function getNonce() {
-        if ( is_null( $this->nonce ) ) {
-            $this->nonce = base64_encode( $this->getNonceSalt() . wp_create_nonce( $this->getId() ) );
-        }
-        return $this->nonce;
+    public function isPublic() {
+        return (bool) $this->getVar( 'public' );
     }
 
     public function setId( $id ) {
@@ -81,6 +77,7 @@ class Action implements ActionInterface {
             throw new \InvalidArgumentException;
         }
         $this->args[ $var ] = $value;
+        $this->sanitize();
         return $this;
     }
 
@@ -90,25 +87,28 @@ class Action implements ActionInterface {
             $json = is_callable( $args[ 'json_validate' ] ) ?
                 $args[ 'json_validate' ] :
                 $args[ 'send_json' ];
-            $this->args = [
-                'access' => (bool) $args[ 'public' ],
-                'json'   => $json,
-                'nonce'  => $this->getNonce()
-            ];
+            unset( $args[ 'json_validate' ] );
+            unset( $args[ 'send_json' ] );
+            $this->args = array_merge( $args, [ 'json' => $json ] );
+            $this->sanitize();
         }
         return $this;
     }
 
-    public function setNonceSalt( $salt ) {
-        if ( ! is_string( $salt ) ) {
+    public function setNonce( $nonce ) {
+        if ( ! is_string( $nonce ) ) {
             throw new \InvalidArgumentException;
         }
-        $this->nonce_salt = $salt;
+        $this->nonce = $nonce;
         return $this;
+    }
+
+    public function sanitize() {
+        $this->args = $this->getSanitizer()->sanitize( $this->args );
     }
 
     public function setPublicAccess( $is = TRUE ) {
-        return $this->setVar( 'access',  ! empty( $is ) );
+        return $this->setVar( 'public',  ! empty( $is ) );
     }
 
     public function sanitizeUsing( $callable ) {
@@ -121,6 +121,17 @@ class Action implements ActionInterface {
     public function setJsonResponse( $return = TRUE, $validate = NULL ) {
         $json = is_callable( $validate ) ? $validate :  ! empty( $return );
         return $this->setVar( 'json_validate', $json );
+    }
+
+    public function setSanitizer( ArgsSanitizerInterface $sanitizer = NULL ) {
+        $this->sanitizer = $sanitizer;
+    }
+
+    public function getSanitizer() {
+        if ( is_null( $this->sanitizer ) ) {
+            $this->sanitizer = new ArgsSanitizer;
+        }
+        return $this->sanitizer;
     }
 
 }
