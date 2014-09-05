@@ -195,13 +195,7 @@ class Tela {
         return $regitered;
     }
 
-    /**
-     * Run requested registered ajax callback during ajax request.
-     *
-     * @return void
-     */
-    public function run() {
-        $vars = $this->getRequestVars();
+    public function performAction( Array $vars = [ ] ) {
         if ( ! $this->isAjax() || $this->check( $vars ) !== TRUE ) {
             return $this->isAjax() ? $this->handleBadExit( $vars ) : NULL;
         }
@@ -261,34 +255,6 @@ class Tela {
     }
 
     /**
-     * Get and sanitize Tela-related variables from $_GET and $_POST and return them in a single
-     * indexd array.
-     *
-     * @return array
-     * @access private
-     */
-    public function getRequestVars() {
-        $input_post = filter_input_array( INPUT_POST, [
-            'telaajax_action'   => FILTER_SANITIZE_STRING,
-            'telaajax_nonce'    => FILTER_SANITIZE_STRING,
-            'telaajax_is_admin' => FILTER_SANITIZE_NUMBER_INT,
-            'telaajax_data'     => FILTER_REQUIRE_ARRAY
-            ] );
-        $input_get = filter_input_array( INPUT_GET, [
-            'telaajax' => FILTER_SANITIZE_NUMBER_INT,
-            'bid'      => FILTER_SANITIZE_NUMBER_INT,
-            ] );
-        return [
-            'action'     => $input_post[ 'telaajax_action' ],
-            'nonce'      => $input_post[ 'telaajax_nonce' ],
-            'data'       => (array) $input_post[ 'telaajax_data' ],
-            'from_admin' => (int) $input_post[ 'telaajax_is_admin' ] > 0,
-            'is_tela'    => (int) $input_get[ 'telaajax' ] > 0,
-            'blogid'     => (int) $input_get[ 'bid' ]
-        ];
-    }
-
-    /**
      * Check arguments sanity for register() method
      *
      * @param string $action
@@ -308,6 +274,21 @@ class Tela {
         if ( ! empty( $error ) ) {
             return $this->error( 'register-error', $error, [ $action, $callback ] );
         }
+    }
+
+    /**
+     * Ensure consistency for action arguments
+     *
+     * @param array $args
+     * @return array
+     */
+    public function sanitizeArgs( Array $args, $sanitizer_class = NULL ) {
+        /** @var Tela\ArgsSanitizerInterface */
+        $sanitizer = $this->getFactory()->factory( 'sanitizer', $sanitizer_class );
+        if ( is_wp_error( $sanitizer ) ) {
+            return $sanitizer;
+        }
+        return $sanitizer->sanitize( $args );
     }
 
     /**
@@ -340,7 +321,23 @@ class Tela {
         );
     }
 
-    /* Internal Stuff */
+    /**
+     * Check if current http request is an ajax one and tela variable is present
+     *
+     * @param mixed $vars
+     * @return boolean
+     */
+    public function isTelaAjax( $vars = NULL ) {
+        if ( ! $this->isAjax() ) {
+            return FALSE;
+        }
+        if ( ! is_array( $vars ) ) {
+            $vars = Tela\Proxy::getRequestVars();
+        }
+        return isset( $vars[ 'is_tela' ] ) && $vars[ 'is_tela' ];
+    }
+
+    ################################################################################# Internal Stuff
 
     /**
      *
@@ -354,22 +351,6 @@ class Tela {
             $this->on_side ++;
             $this->nonces[ $action ] = $this->buildNonce( $action );
         }
-    }
-
-    /**
-     * Ensure consistency for action arguments
-     *
-     * @param array $args
-     * @return array
-     */
-    private function sanitizeArgs( Array $args, $sanitizer_class = NULL ) {
-        /** @var Tela\ArgsSanitizerInterface */
-        $sanitizer = $this->getFactory()->factory( 'sanitizer', $sanitizer_class );
-        if ( is_wp_error( $sanitizer ) ) {
-            return $sanitizer;
-        }
-        $this->sanitizer = $sanitizer;
-        return $sanitizer->sanitize( $args );
     }
 
     /**
@@ -420,7 +401,7 @@ class Tela {
      */
     private function check( Array $vars = [ ], $checker_class = NULL ) {
         if ( empty( $vars ) ) {
-            $vars = $this->getRequestVars();
+            $vars = Tela\Proxy::getRequestVars();
         }
         $action = isset( $vars[ 'action' ] ) ? $this->getAction( $vars[ 'action' ] ) : FALSE;
         if ( ! $action instanceof Tela\ActionInterface ) {
@@ -459,7 +440,7 @@ class Tela {
     }
 
     /**
-     * When an action does not pass check for sanity (is regisered, pass nonce validation...) before
+     * When an action does not pass check for sanity (is registered, pass nonce validation...) before
      * being ran, this method handle the flow quit
      *
      * @return void|boolean
@@ -467,11 +448,11 @@ class Tela {
      */
     private function handleBadExit( $vars = NULL ) {
         if ( ! is_array( $vars ) ) {
-            $vars = $this->getRequestVars();
+            $vars = Tela\Proxy::getRequestVars();
         }
-        if ( isset( $vars[ 'is_tela' ] ) ) {
-            // Chance to die() something different than default
+        if ( $this->isTelaAjax( $vars ) ) {
             $action = $this->getAction( $vars[ 'action' ] );
+            // Chance to die() something different than default
             do_action( 'tela_not_pass_check', $action, $vars, $this );
             wp_die( '' );
         }
@@ -485,10 +466,13 @@ class Tela {
      * @access private
      */
     private function initAjax() {
-        $vars = $this->getRequestVars();
-        if ( isset( $vars[ 'is_tela' ] ) && $vars[ 'is_tela' ] ) {
-            add_action( "wp_ajax_telaajax_proxy", [ $this, 'run' ] );
-            add_action( "wp_ajax_nopriv_telaajax_proxy", [ $this, 'run' ] );
+        static $proxy = NULL;
+        if ( is_null( $proxy ) ) {
+            $proxy = $this->getFactory()->factory( 'proxy', '', [ self::$instances ] );
+        }
+        if ( $this->isTelaAjax() && ! has_action( Tela\Proxy::HOOK, [ $proxy, 'proxy' ] ) ) {
+            add_action( Tela\Proxy::HOOK, [ $proxy, 'proxy' ] );
+            add_action( Tela\Proxy::HOOKNOPRIV, [ $proxy, 'proxy' ] );
         }
     }
 
