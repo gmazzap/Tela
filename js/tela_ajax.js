@@ -1,4 +1,4 @@
-var Tela = {};
+var TelaAjax = {};
 (function($, _Data, Nonces, Tela, window) {
 
     Tela.Ajax = {
@@ -43,16 +43,9 @@ var Tela = {};
                 $(args.target).html(html);
             });
         },
-        bindDataMap: function(args) {
-            var defaults = {
-                target: null,
-                html: true,
-                action: null,
-                data: null,
-                settings: null,
-                parseCb: null
-            };
-            args = $.extend(defaults, args);
+        updateDataMap: function(args) {
+            var def = {target: {}, action: '', data: {}, settings: {}, html: true, parseCb: null};
+            args = $.extend(def, args);
             if (args.settings === null || typeof args.settings !== 'object') {
                 args.settings = {};
             }
@@ -62,20 +55,20 @@ var Tela = {};
             }
             args.settings.dataType = 'json';
             return this.run(args.action, args.data, args.settings).done(function(jsonData) {
-                this.parseDataMap.apply(args.target, [jsonData, args]);
+                Tela.Ajax.parseDataMap.apply(args.target, [jsonData, args]);
             });
         },
-        parseDataMap: function(map, settings) {
-            if ($.isFunction(settings.parseCb)) {
-                map = settings.parseCb.apply(settings.target, [map, settings.target, settings.data]);
+        parseDataMap: function(map, args) {
+            if ($.isFunction(args.parseCb)) {
+                map = args.parseCb.apply(args.target, [map, args.target, args.data]);
             }
-            var $map = $(settings.target);
+            var $map = $(args.target);
             $.each(map, function(field, value) {
                 if (typeof value === 'string') {
                     var $el = $map.find('[data-tela-map="' + field + '"]');
-                    if ($el.length && settings.html) {
+                    if ($el.length && args.html) {
                         $el.html(value);
-                    } else if ($el.length && settings.args.html) {
+                    } else if ($el.length && !args.html) {
                         $el.text(value);
                     }
                 }
@@ -101,6 +94,8 @@ var Tela = {};
                 action: null,
                 data: {},
                 ajax: {},
+                html: true,
+                parseCb: null,
                 event: null,
                 updateOn: null,
                 subject: null,
@@ -125,6 +120,15 @@ var Tela = {};
                 settings.updateOn = 'subject-event';
             } else if (typeof settings.updateOn !== 'string' || settings.updateOn === '') {
                 settings.updateOn = $(this).data('tela-update-on');
+            }
+            if (typeof $(this).data('tela-map-html') !== 'undefined') {
+                settings.html = $(this).data('tela-map-html');
+            }
+            if (!$.isFunction(settings.parseCb)) {
+                var callback = $(this).data('tela-map-callback');
+                if ($.isFunction(window[callback])) {
+                    settings.parseCb = window[callback];
+                }
             }
             return settings;
         },
@@ -170,28 +174,21 @@ var Tela = {};
             return response;
         },
         runCallerUpdate: function(caller, target, settings, dataArgs) {
-            var defaults = {
-                target: null,
-                html: true,
-                action: null,
-                data: null,
-                settings: null,
-                parseCb: null
-            };
             var args = {
                 target: target,
                 action: settings.action,
                 data: Tela.PluginHelpers.getPostData.apply(caller, [dataArgs]),
                 settings: settings.ajax,
-                html: true,
-                parseCb: null
+                html: settings.html,
+                parseCb: settings.parseCb
             };
-            args = $.extend(defaults, args);
+            var response = {};
             if (typeof caller.data('tela-bind-map') !== 'undefined') {
-                return Tela.Ajax.updateDataMap.apply(Tela.Ajax, [args]);
+                response = Tela.Ajax.updateDataMap.apply(Tela.Ajax, [args]);
             } else {
-                return Tela.Ajax.updateHtml.apply(Tela.Ajax, [args]);
+                response = Tela.Ajax.updateHtml.apply(Tela.Ajax, [args]);
             }
+            return Tela.PluginHelpers.response(response, args.settings);
         },
         runCallerAction: function(caller, settings) {
             var args = {
@@ -276,4 +273,4 @@ var Tela = {};
     };
 
 // TelaAjaxUrl and TelaAjaxDataNonces comes from wp_localize_script
-})(jQuery, TelaAjaxData, TelaAjaxNonces, Tela, window);
+})(jQuery, TelaAjaxData, TelaAjaxNonces, TelaAjax, window);
