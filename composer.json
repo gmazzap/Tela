@@ -1,6 +1,6 @@
 {
     "name": "giuseppe-mazzapica/tela",
-    "description": "Ajax helper for WordPress",
+    "description": "PHP/jQuery tool for super-easy ajax in WordPress",
     "keywords": ["wordpress"],
     "homepage": "https://github.com/Giuseppe-Mazzapica/Tela",
     "license": "MIT",
@@ -19,9 +19,18 @@
     "require": {
         "php": ">=5.4"
     },
+    "require-dev": {
+        "phpunit/phpunit": "3.7.*",
+        "10up/wp_mock": "dev-master"
+    },
     "autoload": {
         "psr-4": {
             "GM\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "GM\\Tela\\Tests\\": "tests/src/"
         }
     },
     "config": {
