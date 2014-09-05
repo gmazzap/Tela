@@ -32,9 +32,9 @@ class Tela {
     private $shared;
 
     /**
-     * @var boolean Set to true when instance has been inited
+     * @var int Set to true when instance has been inited
      */
-    private $init = FALSE;
+    private $init = 0;
 
     /**
      * @var array Contains all the registered actions
@@ -54,7 +54,7 @@ class Tela {
     /**
      * @var string Salt string used to build nonces to be passed to browser via wp_localize_scripts
      */
-    private $salt;
+    private $salt = '';
 
     /**
      * Retrieve a specific instance of Tela
@@ -153,18 +153,37 @@ class Tela {
     }
 
     /**
+     * Check if the instance has been inited, and between init() is called an 'wp_loaded' ran return 1
+     */
+    public function inited() {
+        return $this->init === 1 ? 1 : $this->init > 1;
+    }
+
+    /**
      * Init instance once on 'wp_loaded' hook, acts differently when called during an ajax request.
      */
     public function init() {
-        if ( ! $this->init && ! ( did_action( 'wp_loaded' ) || doing_action( 'wp_loaded' ) ) ) {
-            add_action( 'wp_loaded', function() {
-                $this->init = TRUE;
-                $id = $this->getId();
-                $this->salt = wp_create_nonce( "tela_{$id}" );
-                do_action( "tela_register_{$id}", $this );
-                return $this->isAjax() ? $this->initAjax() : $this->initFront();
-            }, 0 );
+        if ( $this->init === 0 && ! ( did_action( 'wp_loaded' ) || doing_action( 'wp_loaded' ) ) ) {
+            $this->init = 1;
+            add_action( 'wp_loaded', [ $this, 'whenLoaded' ], 0 );
         }
+    }
+
+    /**
+     * Launch the class initialization on wp_loaded hook
+     *
+     * @return void
+     */
+    public function whenLoaded() {
+        if ( $this->inited() !== 1 || current_filter() !== 'wp_loaded' ) {
+            return;
+        }
+        $this->init ++;
+        remove_action( 'wp_loaded', [ $this, __FUNCTION__ ], 0 );
+        $id = $this->getId();
+        $this->salt = wp_create_nonce( "tela_{$id}" );
+        do_action( "tela_register_{$id}", $this );
+        $this->isAjax() ? $this->initAjax() : $this->initFront();
     }
 
     /**
@@ -250,6 +269,10 @@ class Tela {
         return $this->isAction( $action ) ? $this->actions[ $action ] : NULL;
     }
 
+    public function getNonceSalt() {
+        return $this->salt;
+    }
+
     public function getNonceForAction( $action ) {
         return isset( $this->nonces[ $action ] ) ? $this->nonces[ $action ] : '';
     }
@@ -263,7 +286,7 @@ class Tela {
      */
     public function checkRegisterVars( $action, $callback ) {
         $error = '';
-        if ( ! $this->init ) {
+        if ( $this->inited() !== TRUE ) {
             $id = $this->getId();
             $error .= "Please use 'tela_register_{$id}' action to register your Tela callbacks.";
         }
@@ -466,6 +489,9 @@ class Tela {
      * @access private
      */
     private function initAjax() {
+        if ( $this->inited() !== 2 ) {
+            return;
+        }
         static $proxy = NULL;
         if ( is_null( $proxy ) ) {
             $proxy = $this->getFactory()->factory( 'proxy', '', [ self::$instances ] );
@@ -483,6 +509,9 @@ class Tela {
      * @access private
      */
     private function initFront( $manager_class = NULL ) {
+        if ( $this->inited() !== 2 ) {
+            return;
+        }
         static $js_manager = NULL;
         if ( ! $this->hasActions() ) {
             return;
