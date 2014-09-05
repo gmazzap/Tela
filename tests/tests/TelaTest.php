@@ -91,7 +91,6 @@ class TelaTest extends TestCase {
     }
 
     function testRegisterOnAjax() {
-        \WP_Mock::wpFunction( 'is_wp_error', [ 'return' => FALSE ] );
         \WP_Mock::wpFunction( 'wp_create_nonce', [
             'args'   => [ 'test::foo' ],
             'return' => 'nonce_for_foo',
@@ -131,7 +130,6 @@ class TelaTest extends TestCase {
     }
 
     function testPerformAjax() {
-        \WP_Mock::wpFunction( 'is_wp_error', [ 'return' => FALSE ] );
         \WP_Mock::wpFunction( 'wp_send_json', [
             'times'  => 1,
             'args'   => [ [ 'foo' => 'bar' ] ],
@@ -178,11 +176,6 @@ class TelaTest extends TestCase {
 
     function testSanitizeArgsErrorIfBadSanitizer() {
         $error = new \WP_Error;
-        \WP_Mock::wpFunction( 'is_wp_error', [
-            'times'  => 1,
-            'args'   => [ $error ],
-            'return' => TRUE
-        ] );
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'getFactory->factory' )
             ->with( 'sanitizer', NULL )->andReturn( $error );

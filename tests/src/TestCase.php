@@ -4,12 +4,6 @@ class TestCase extends \PHPUnit_Framework_TestCase {
 
     public function setUp() {
         \WP_Mock::setUp();
-        \WP_Mock::wpFunction( 'get_current_blog_id', [
-            'return' => 1,
-        ] );
-        \WP_Mock::wpFunction( 'wp_die', [
-            'return' => NULL,
-        ] );
     }
 
     public function tearDown() {
