@@ -4,9 +4,10 @@ class Factory {
 
     private static $types = [
         'action'    => [ '\GM\Tela\ActionInterface', '\GM\Tela\Action' ],
+        'proxy'     => [ '\GM\Tela\ProxyInterface', '\GM\Tela\Proxy' ],
         'sanitizer' => [ '\GM\Tela\ArgsSanitizerInterface', '\GM\Tela\ArgsSanitizer' ],
         'jsmanager' => [ '\GM\Tela\JsManagerInterface', '\GM\Tela\JsManager' ],
-		'checker' 	=> [ '\GM\Tela\AjaxCheckerInterface', '\GM\Tela\AjaxChecker' ],
+        'checker'   => [ '\GM\Tela\AjaxCheckerInterface', '\GM\Tela\AjaxChecker' ]
     ];
     private $tela_id;
     private $objects = [ ];
