@@ -16,11 +16,11 @@ class TestCase extends \PHPUnit_Framework_TestCase {
         return $factory;
     }
 
-    protected function getTela( $id, $factory = NULL, $shared = NULL ) {
+    protected function getTela( $id, $allowed = TRUE, $factory = NULL, $shared = NULL ) {
         if ( ! $factory instanceof GM\Tela\Factory ) {
             $factory = $this->getMockedFactory();
         }
-        return new \GM\Tela( $id, $factory, $shared );
+        return new \GM\Tela( $id, $allowed, $factory, $shared );
     }
 
     protected function getMockedTela( $id = 'test' ) {

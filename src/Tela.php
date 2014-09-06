@@ -27,6 +27,11 @@ class Tela {
     private $factory;
 
     /**
+     * @var bool|callable Init the instance if this is TRUE (or returns TRUE)
+     */
+    private $when;
+
+    /**
      * @var mixed Variable to be passed to all the registered ajax callbacks
      */
     private $shared;
@@ -57,12 +62,15 @@ class Tela {
     private $salt = '';
 
     /**
-     * Retrieve a specific instance of Tela
+     * Retrieve a specific instance of Tela.
      *
      * @param string $id
-     * @return GM\Tela
+     * @param bool|callable $when Init the instance id this is TRUE (or return TRUE)
+     * @param mixed $shared a variable to be passed to all ajax registered actions.
+     * @param GM\Tela\Factory $factory Factory to be used for the instance
+     * @return GM\Tela|GM\Tela\Error
      */
-    final static function instance( $id, $shared = NULL, Tela\Factory $factory = NULL ) {
+    final static function instance( $id, $when = TRUE, $shared = NULL, Tela\Factory $factory = NULL ) {
         if ( ! is_string( $id ) ) {
             return $this->error( 'bad-id', 'Tela instance id must be a string.' );
         }
@@ -71,7 +79,10 @@ class Tela {
             if ( is_null( $factory ) ) {
                 $factory = new Tela\Factory;
             }
-            $tela = new $class( $id, $factory, $shared );
+            $tela = new $class( $id, $when, $factory, $shared );
+            if ( ! is_bool( $tela->when ) && ! is_callable( $tela->when ) ) {
+                $tela->when = $when;
+            }
             if ( $factory->getTelaId() !== $id ) {
                 $factory->setTelaId( $id );
             }
@@ -106,10 +117,10 @@ class Tela {
     /**
      * Wrapper for wp_enqueue_script() can be used to quickly add js having Tela js as dependency.
      *
-     * @param type $handle
-     * @param type $url
-     * @param type $deps
-     * @param type $ver
+     * @param string $handle
+     * @param string $url
+     * @param array $deps
+     * @param string $ver
      * @return void
      * @see http://codex.wordpress.org/Function_Reference/wp_enqueue_script
      */
@@ -130,15 +141,18 @@ class Tela {
     /**
      * Constructor
      *
-     * @param string $id Instance id, if mitted will be auto-generated.
-     * @param mixed $shared Variable to be passed to every ajax callback
+     * @param string $id
+     * @param bool|callable $when Init the instance id this is TRUE (or return TRUE)
+     * @param GM\Tela\Factory $factory Factory to be used for the instance
+     * @param mixed $shared a variable to be passed to all ajax registered actions.
      */
-    public function __construct( $id, Tela\Factory $factory, $shared = NULL ) {
+    public function __construct( $id, $when, Tela\Factory $factory, $shared = NULL ) {
         if ( empty( $id ) || ! is_string( $id ) ) {
             $id = uniqid( 'tela_' );
         }
         $factory->setTelaId( $id );
         $this->id = $id;
+        $this->when = $when;
         $this->factory = $factory;
         if ( ! is_null( $shared ) ) {
             $this->shared = $shared;
@@ -164,6 +178,15 @@ class Tela {
     }
 
     /**
+     * Check if the instance is allowed to run.
+     */
+    public function allowed() {
+        return is_callable( $this->when ) ?
+            (bool) call_user_func( $this->when, $this->isAjax() ) :
+            (bool) $this->when;
+    }
+
+    /**
      * Check if the instance has been inited, and between init() is called an 'wp_loaded' ran return 1
      */
     public function inited() {
@@ -186,7 +209,7 @@ class Tela {
      * @return void
      */
     public function whenLoaded() {
-        if ( $this->inited() !== 1 || current_filter() !== 'wp_loaded' ) {
+        if ( $this->inited() !== 1 || current_filter() !== 'wp_loaded' || ! $this->allowed() ) {
             return;
         }
         $this->init ++;
@@ -208,6 +231,9 @@ class Tela {
      * @return GM\Tela\ActionInterface
      */
     public function register( $action, $callback, Array $args = [ ], $action_class = '' ) {
+        if ( ! $this->allowed() ) {
+            return;
+        }
         $action = $this->getId() . "::{$action}";
         $args = $this->sanitizeArgs( $args );
         if ( ! $this->isAjax() ) {
@@ -226,7 +252,7 @@ class Tela {
     }
 
     public function performAction( Array $vars = [ ] ) {
-        if ( ! $this->isAjax() || $this->check( $vars ) !== TRUE ) {
+        if ( ! $this->isAjax() || ! $this->allowed() || $this->check( $vars ) !== TRUE ) {
             return $this->isAjax() ? $this->handleBadExit( $vars ) : NULL;
         }
         /**

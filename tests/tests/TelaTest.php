@@ -47,9 +47,22 @@ class TelaTest extends TestCase {
         assertNull( $tela->whenLoaded() );
     }
 
+    function testWhenLoadedDoNothingIfNotAllowed() {
+        \WP_Mock::wpFunction( 'current_filter', [
+            'times'  => 1,
+            'args'   => [ ],
+            'return' => 'wp_loaded',
+        ] );
+        $tela = $this->getMockedTela();
+        $tela->shouldReceive( 'inited' )->once()->withNoArgs()->andReturn( 1 );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( FALSE );
+        assertNull( $tela->whenLoaded() );
+    }
+
     function testWhenLoaded() {
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1 );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( TRUE );
         \WP_Mock::wpFunction( 'current_filter', [
             'times'  => 1,
@@ -95,6 +108,7 @@ class TelaTest extends TestCase {
             'return' => FALSE,
         ] );
         $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isTelaAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getFactory->registry' )
@@ -127,6 +141,7 @@ class TelaTest extends TestCase {
         ] );
         \WP_Mock::expectAction( 'tela_register_test', $tela );
         $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( FALSE );
         $tela->shouldReceive( 'hasActions' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getFactory->registry' )
@@ -137,6 +152,12 @@ class TelaTest extends TestCase {
         $js_manager->shouldReceive( 'enabled' )->once()->withNoArgs()->andReturn( FALSE );
         $js_manager->shouldReceive( 'enable' )->once()->withNoArgs()->andReturnNull();
         assertNull( $tela->whenLoaded() );
+    }
+
+    function testRegisterDoNothingIfNotAllowed() {
+        $tela = $this->getMockedTela( 'test' );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( FALSE );
+        assertNull( $tela->register( 'foo', NULL, [ ] ) );
     }
 
     function testRegisterOnFront() {
@@ -151,6 +172,7 @@ class TelaTest extends TestCase {
         ] );
         $args = [ 'side' => \GM\Tela::FRONTEND ];
         $tela = $this->getMockedTela( 'test' );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'sanitizeArgs' )->once()->with( \Mockery::type( 'array' ) )->andReturn( $args );
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( FALSE );
         $expected = base64_encode( 'nonce_for_foo' );
@@ -171,6 +193,7 @@ class TelaTest extends TestCase {
         $action_obj->shouldReceive( 'setCallback' )->once()->with( NULL )->andReturnNull();
         $action_obj->shouldReceive( 'setArgs' )->once()->with( $args )->andReturnNull();
         $tela = $this->getMockedTela( 'test' );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'sanitizeArgs' )->once()->with( \Mockery::type( 'array' ) )->andReturn( $args );
         $tela->shouldReceive( 'checkRegisterVars' )->once()->with( 'test::foo', NULL )->andReturnNull();
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( TRUE );
@@ -182,23 +205,35 @@ class TelaTest extends TestCase {
         assertEquals( $nonce, $tela->getActionNonce( 'test::foo' ) );
     }
 
-    function testPerformAjaxNullIfNonAjax() {
+    function testPerformActionAjaxNullIfNonAjax() {
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( FALSE );
         assertNull( $tela->performAction() );
     }
 
-    function testPerformAjaxBadExitIfAjaxAndNotCheck() {
+    function testPerformActionBadExitIfNotAllowed() {
+        $args = [ 'action' => 'foo' ];
+        $tela = $this->getMockedTela();
+        $tela->shouldReceive( 'isAjax' )->twice()->withNoArgs()->andReturn( TRUE );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( FALSE ); // <-- FALSE
+        $tela->shouldReceive( 'isTelaAjax' )->once()->with( $args )->andReturn( TRUE );
+        $tela->shouldReceive( 'getAction' )->once()->with( 'foo' )->andReturn( 'I am an Action' );
+        \WP_Mock::expectAction( 'tela_not_pass_check', 'I am an Action', $args, $tela );
+        assertFalse( $tela->performAction( $args ) );
+    }
+
+    function testPerformActionAjaxBadExitIfAjaxAndNotCheck() {
         $args = [ 'action' => 'foo' ];
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isTelaAjax' )->atLeast( 1 )->with( $args )->andReturn( TRUE );
         $tela->shouldReceive( 'getAction' )->atLeast( 1 )->with( 'test' )->andReturnNull();
         \WP_Mock::expectAction( 'tela_not_pass_check', NULL, $args, $tela );
         assertFalse( $tela->performAction( $args ) );
     }
 
-    function testPerformAjax() {
+    function testPerformActionAjax() {
         \WP_Mock::wpFunction( 'wp_send_json', [
             'times'  => 1,
             'args'   => [ [ 'foo' => 'bar' ] ],
@@ -217,6 +252,7 @@ class TelaTest extends TestCase {
         $checker->shouldReceive( 'checkRequest' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $checker->shouldReceive( 'checkNonce' )->atLeast( 1 )->with( '' )->andReturn( TRUE );
         $tela = $this->getMockedTela( 'test' );
+        $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getAction' )->atLeast( 1 )->with( 'foo' )->andReturn( $action_obj );
         $tela->shouldReceive( 'getActionNonce' )->atLeast( 1 )->with( 'foo' )->andReturn( 'nonce' );
