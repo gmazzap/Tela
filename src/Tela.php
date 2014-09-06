@@ -280,11 +280,22 @@ class Tela {
         return $this->isAction( $action ) ? $this->actions[ $action ] : NULL;
     }
 
+    /**
+     * Getter for salt string.
+     *
+     * @return string
+     */
     public function getNonceSalt() {
         return $this->salt;
     }
 
-    public function getNonceForAction( $action ) {
+    /**
+     * Get a strored nonce fo a specific action id.
+     *
+     * @param string $action
+     * @return string
+     */
+    public function getActionNonce( $action ) {
         return isset( $this->nonces[ $action ] ) ? $this->nonces[ $action ] : '';
     }
 
@@ -500,8 +511,7 @@ class Tela {
         if ( is_wp_error( $checker ) ) {
             return $checker;
         }
-        return $checker->checkRequest()
-            && $checker->checkNonce( $this->getNonceForAction( $action->getId() ), $this->salt );
+        return $checker->checkRequest() && $checker->checkNonce( $this->salt );
     }
 
     /**

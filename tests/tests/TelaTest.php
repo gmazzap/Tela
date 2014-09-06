@@ -155,7 +155,7 @@ class TelaTest extends TestCase {
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( FALSE );
         $expected = base64_encode( 'nonce_for_foo' );
         assertNull( $tela->register( 'foo', NULL, $args ) );
-        assertEquals( $expected, $tela->getNonceForAction( 'test::foo' ) );
+        assertEquals( $expected, $tela->getActionNonce( 'test::foo' ) );
     }
 
     function testRegisterOnAjax() {
@@ -179,7 +179,7 @@ class TelaTest extends TestCase {
         $registered = $tela->register( 'foo', NULL, $args );
         assertEquals( $action_obj, $registered );
         assertEquals( $action_obj, $tela->getAction( 'test::foo' ) );
-        assertEquals( $nonce, $tela->getNonceForAction( 'test::foo' ) );
+        assertEquals( $nonce, $tela->getActionNonce( 'test::foo' ) );
     }
 
     function testPerformAjaxNullIfNonAjax() {
@@ -219,7 +219,7 @@ class TelaTest extends TestCase {
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getAction' )->atLeast( 1 )->with( 'foo' )->andReturn( $action_obj );
-        $tela->shouldReceive( 'getNonceForAction' )->atLeast( 1 )->with( 'foo' )->andReturn( 'nonce' );
+        $tela->shouldReceive( 'getActionNonce' )->atLeast( 1 )->with( 'foo' )->andReturn( 'nonce' );
         $tela->shouldReceive( 'getFactory->get' )
             ->with( 'checker', NULL, [ $args, $action_obj ] )
             ->andReturn( $checker );
