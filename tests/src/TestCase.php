@@ -8,6 +8,7 @@ class TestCase extends \PHPUnit_Framework_TestCase {
 
     public function tearDown() {
         \WP_Mock::tearDown();
+        \GM\Tela::flush();
     }
 
     protected function getMockedFactory() {
