@@ -19,12 +19,6 @@ class Action implements ActionInterface {
         'json_validate' => NULL
     ];
 
-    /**
-     * Constructor
-     *
-     * @param string $id Action id
-     * @param array $args Action arguments to optionally set on action instantiation
-     */
     public function __construct( $id, Array $args = [ ] ) {
         $this->setId( $id );
         if ( ! empty( $args ) ) {
@@ -32,40 +26,18 @@ class Action implements ActionInterface {
         }
     }
 
-    /**
-     * Getter for the id.
-     *
-     * @return string
-     */
     public function getId() {
         return $this->id;
     }
 
-    /**
-     * Getter for action-stored blog id.
-     *
-     * @return string
-     */
     public function getBlogId() {
         return $this->blogid;
     }
 
-    /**
-     * Getter for the action callback.
-     *
-     * @return callable
-     */
     public function getCallback() {
         return $this->callback;
     }
 
-    /**
-     * Get a variable from action context
-     *
-     * @param string $var Variable to get
-     * @return mized
-     * @throws \InvalidArgumentException
-     */
     public function getVar( $var = '' ) {
         if ( ! is_string( $var ) ) {
             throw new \InvalidArgumentException;
@@ -73,30 +45,14 @@ class Action implements ActionInterface {
         return isset( $this->args[ $var ] ) ? $this->args[ $var ] : NULL;
     }
 
-    /**
-     * Getter for action nonce.
-     *
-     * @return string
-     */
     public function getNonce() {
         return $this->nonce;
     }
 
-    /**
-     * Check if current action is public i.e. available in frontend for non logged users.
-     * @return boolean
-     */
     public function isPublic() {
         return (bool) $this->getVar( 'public' );
     }
 
-    /**
-     * Setter for action id.
-     *
-     * @param string $id
-     * @return \GM\Tela\Action
-     * @throws \InvalidArgumentException
-     */
     public function setId( $id ) {
         if ( ! is_string( $id ) ) {
             throw new \InvalidArgumentException;
@@ -105,13 +61,6 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    /**
-     * Setter for action blog id.
-     *
-     * @param string $id
-     * @return \GM\Tela\Action
-     * @throws \InvalidArgumentException
-     */
     public function setBlogId( $id ) {
         if ( ! is_numeric( $id ) ) {
             throw new \InvalidArgumentException;
@@ -120,13 +69,6 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    /**
-     * Setter for action callback.
-     *
-     * @param callable $callback
-     * @return \GM\Tela\Action
-     * @throws \InvalidArgumentException
-     */
     public function setCallback( $callback ) {
         if ( ! is_callable( $callback ) ) {
             throw new \InvalidArgumentException;
@@ -135,14 +77,6 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    /**
-     * Set a variable in the action context.
-     *
-     * @param string $var
-     * @param mixed $value
-     * @return \GM\Tela\Action
-     * @throws \InvalidArgumentException
-     */
     public function setVar( $var, $value = NULL ) {
         if ( ! is_string( $var ) ) {
             throw new \InvalidArgumentException;
@@ -152,14 +86,6 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    /**
-     * Set an array of variables in the action context.
-     * Can be used only if no arguments is already set, to update arguments use `setVar` or one
-     * of the specific setter.
-     *
-     * @param array $args
-     * @return \GM\Tela\Action
-     */
     public function setArgs( Array $args = [ ] ) {
         if ( empty( $this->args ) ) {
             $args = wp_parse_args( $args, static::$defaults );
@@ -174,13 +100,6 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    /**
-     * setter for action nonce.
-     *
-     * @param string $nonce
-     * @return \GM\Tela\Action
-     * @throws \InvalidArgumentException
-     */
     public function setNonce( $nonce ) {
         if ( ! is_string( $nonce ) ) {
             throw new \InvalidArgumentException;
@@ -189,9 +108,6 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    /**
-     * Ensure consistency for action arguemnts
-     */
     public function sanitize() {
         $this->args = $this->getSanitizer()->sanitize( $this->args );
     }
