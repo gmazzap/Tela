@@ -13,6 +13,10 @@ class Stub implements StubInterface {
 
 }
 
+class StubAlt extends Stub {
+
+}
+
 class EvilStub implements StubInterface {
 
     private function __construct() {
