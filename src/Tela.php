@@ -220,7 +220,7 @@ class Tela {
         try {
             $regitered = $this->buildAction( $action, $callback, $args, $action_class );
         } catch ( \Exception $e ) {
-            $regitered = $this->error( get_class( $e ), $e->getMessage(), $e );
+            $regitered = $this->error( 'tela-error-' . strtolower( get_class( $e ) ), $e->getMessage() );
         }
         return $regitered;
     }
