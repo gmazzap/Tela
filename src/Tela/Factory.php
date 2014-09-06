@@ -31,6 +31,24 @@ class Factory {
     }
 
     /**
+     * Allow to register an additional object type
+     *
+     * @param string $id Id for the type
+     * @param string $interface Interface name
+     * @param string $default_class Default class name for the type
+     */
+    public function registerType( $id, $interface, $default_class ) {
+        if (
+            ! isset( self::$types[ $id ] )
+            && is_string( $id )
+            && interface_exists( $interface )
+            && class_exists( $default_class )
+        ) {
+            self::$types[ $id ] = [$interface, $default_class ];
+        }
+    }
+
+    /**
      * Build an object based of a registered type, an optional class ans constructor arguments
      *
      * @param string $type Id for the allowed types
