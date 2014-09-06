@@ -9,12 +9,12 @@ class Tela {
     /**
      * @var array Contains the intsnace ids
      */
-    private static $instances;
+    private static $instances = [ ];
 
     /**
      * @var string Handle for the main javascript file
      */
-    private static $js_handle;
+    private static $js_handle = '';
 
     /**
      * @var string Instance id
@@ -81,6 +81,17 @@ class Tela {
             $tela->init();
         }
         return self::$instances[ $id ];
+    }
+
+    /**
+     * Testing utility, disabled in WordPress context
+     */
+    public static function flush() {
+        if ( ! function_exists( 'the_post' ) ) {
+            self::$instances = [ ];
+            self::$js_handle = NULL;
+            Tela\Factory::flushRegistry();
+        }
     }
 
     /**
@@ -307,7 +318,7 @@ class Tela {
      */
     public function sanitizeArgs( Array $args, $sanitizer_class = NULL ) {
         /** @var Tela\ArgsSanitizerInterface */
-        $sanitizer = $this->getFactory()->factory( 'sanitizer', $sanitizer_class );
+        $sanitizer = $this->getFactory()->get( 'sanitizer', $sanitizer_class );
         if ( is_wp_error( $sanitizer ) ) {
             return $sanitizer;
         }
@@ -360,7 +371,21 @@ class Tela {
         return isset( $vars[ 'is_tela' ] ) && $vars[ 'is_tela' ];
     }
 
-    ################################################################################# Internal Stuff
+    /**
+     * Handle errors by returning an instance of \GM\Tela\Error that extends WP_Error.
+     * Accepts all arguments accpeted by WP_Error constructor.
+     *
+     * @param string $code
+     * @param string $message
+     * @param mixed $data
+     * @return \GM\Tela\Error
+     * @see http://codex.wordpress.org/Class_Reference/WP_Error
+     */
+    public function error( $code = 'general', $message = '', $data = NULL ) {
+        return new Tela\Error( "tela-error-{$code}", $message, $data );
+    }
+
+################################################################################# Internal Stuff
 
     /**
      *
@@ -373,6 +398,46 @@ class Tela {
         if ( $args[ 'side' ] !== $not_on_side ) {
             $this->on_side ++;
             $this->nonces[ $action ] = $this->buildNonce( $action );
+        }
+    }
+
+    /**
+     * Init class on ajax requests
+     *
+     * @return void
+     * @access private
+     */
+    private function initAjax() {
+        if ( $this->inited() !== 2 ) {
+            return;
+        }
+        $proxy = $this->getFactory()->registry( 'proxy', '', [ self::$instances ] );
+        if ( is_wp_error( $proxy ) ) {
+            return $proxy;
+        }
+        if ( $this->isTelaAjax() && ! has_action( Tela\Proxy::HOOK, [ $proxy, 'proxy' ] ) ) {
+            add_action( Tela\Proxy::HOOK, [ $proxy, 'proxy' ] );
+            add_action( Tela\Proxy::HOOKNOPRIV, [ $proxy, 'proxy' ] );
+        }
+    }
+
+    /**
+     * Init class on non-ajax requests
+     *
+     * @return void
+     * @access private
+     */
+    private function initFront() {
+        if ( ( $this->inited() !== 2 || ! $this->hasActions() ) ) {
+            return;
+        }
+        $js_manager = $this->getFactory()->registry( 'jsmanager' );
+        if ( is_wp_error( $js_manager ) ) {
+            return $js_manager;
+        }
+        $js_manager->addNonces( $this->nonces );
+        if ( ! $js_manager->enabled() ) {
+            $js_manager->enable();
         }
     }
 
@@ -391,7 +456,7 @@ class Tela {
             return FALSE;
         }
         /** @var Tela\ActionInterface */
-        $action_obj = $this->getFactory()->factory( 'action', $action_class, [ $action ] );
+        $action_obj = $this->getFactory()->get( 'action', $action_class, [ $action ] );
         if ( is_wp_error( $action_obj ) ) {
             return $action_obj;
         }
@@ -431,7 +496,7 @@ class Tela {
             return FALSE;
         }
         /** @var Tela\AjaxCheckerInterface */
-        $checker = $this->getFactory()->factory( 'checker', $checker_class, [ $vars, $action ] );
+        $checker = $this->getFactory()->get( 'checker', $checker_class, [ $vars, $action ] );
         if ( is_wp_error( $checker ) ) {
             return $checker;
         }
@@ -480,69 +545,6 @@ class Tela {
             wp_die( '' );
         }
         return FALSE;
-    }
-
-    /**
-     * Init class on ajax requests
-     *
-     * @return void
-     * @access private
-     */
-    private function initAjax() {
-        if ( $this->inited() !== 2 ) {
-            return;
-        }
-        static $proxy = NULL;
-        if ( is_null( $proxy ) ) {
-            $proxy = $this->getFactory()->factory( 'proxy', '', [ self::$instances ] );
-        }
-        if ( $this->isTelaAjax() && ! has_action( Tela\Proxy::HOOK, [ $proxy, 'proxy' ] ) ) {
-            add_action( Tela\Proxy::HOOK, [ $proxy, 'proxy' ] );
-            add_action( Tela\Proxy::HOOKNOPRIV, [ $proxy, 'proxy' ] );
-        }
-    }
-
-    /**
-     * Init class on non-ajax requests
-     *
-     * @return void
-     * @access private
-     */
-    private function initFront( $manager_class = NULL ) {
-        if ( $this->inited() !== 2 ) {
-            return;
-        }
-        static $js_manager = NULL;
-        if ( ! $this->hasActions() ) {
-            return;
-        }
-        if ( is_null( $js_manager ) ) {
-            /** @var Tela\JsManagerInstance */
-            $js_manager = $this->getFactory()->factory( 'jsmanager', $manager_class );
-            if ( is_wp_error( $js_manager ) ) {
-                return $js_manager;
-            }
-            self::$js_handle = $js_manager->getHandle();
-        }
-        $js_manager->addNonces( $this->nonces );
-        if ( ! $js_manager->enabled() ) {
-            $js_manager->enable();
-        }
-    }
-
-    /**
-     * Handle errors by returning an instance of \GM\Tela\Error that extends WP_Error.
-     * Accepts all arguments to be passed to WP_Error constructor.
-     *
-     * @param string $code
-     * @param string $message
-     * @param mixed $data
-     * @return \GM\Tela\Error
-     * @access protected
-     * @see http://codex.wordpress.org/Class_Reference/WP_Error
-     */
-    protected function error( $code = 'general', $message = '', $data = NULL ) {
-        return new Tela\Error( "tela-error-{$code}", $message, $data );
     }
 
 }
