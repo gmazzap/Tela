@@ -4,24 +4,24 @@ class JsManager implements JsManagerInterface {
 
     private $nonces;
     private $handle;
-	private $enabled = FALSE;
+    private $enabled = FALSE;
     private $script_added = FALSE;
     private $nonces_added = FALSE;
 
     public function enable() {
-		$this->enabled = TRUE;
+        $this->enabled = TRUE;
         add_action( $this->getHook(), [ $this, 'addScript' ] );
         add_action( $this->getHook(), [ $this, 'addNoncesData' ], PHP_INT_MAX );
     }
-	
-	public function enabled() {
+
+    public function enabled() {
         return $this->enabled;
     }
-	
-	public function addNonces( Array $nonces = [] ) {
-		if ( ! empty( $nonces ) ) {
-        	$this->nonces = array_filter( array_merge( (array) $this->nonces, $nonces ) );
-		}
+
+    public function addNonces( Array $nonces = [ ] ) {
+        if ( ! empty( $nonces ) ) {
+            $this->nonces = array_filter( array_merge( (array) $this->nonces, $nonces ) );
+        }
     }
 
     public function getNonces() {
