@@ -106,7 +106,8 @@ class Factory {
     private function getReflection( $type, $class ) {
         $default = self::$types[ $type ][ 1 ];
         $interface = self::$types[ $type ][ 0 ];
-        $class = apply_filters( "tela_factory_{$this->tela_id}_{$type}", $class );
+        $id = $this->getTelaId();
+        $class = apply_filters( "tela_factory_{$id}_{$type}", $class );
         if ( empty( $class ) || ! is_string( $class ) || ! class_exists( $class ) ) {
             $class = $default;
         }
