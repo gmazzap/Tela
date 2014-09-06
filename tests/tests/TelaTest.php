@@ -215,7 +215,7 @@ class TelaTest extends TestCase {
         $action_obj->shouldReceive( 'getCallback' )->atLeast( 1 )->withNoArgs()->andReturn( $closure );
         $checker = \Mockery::mock( 'GM\Tela\AjaxCheckerInterface' );
         $checker->shouldReceive( 'checkRequest' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
-        $checker->shouldReceive( 'checkNonce' )->atLeast( 1 )->with( 'nonce', '' )->andReturn( TRUE );
+        $checker->shouldReceive( 'checkNonce' )->atLeast( 1 )->with( '' )->andReturn( TRUE );
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getAction' )->atLeast( 1 )->with( 'foo' )->andReturn( $action_obj );

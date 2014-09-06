@@ -43,5 +43,5 @@ interface AjaxCheckerInterface {
      * @param string $salt
      * @return boolean
      */
-    public function checkNonce( $nonce, $salt );
+    public function checkNonce( $salt );
 }
