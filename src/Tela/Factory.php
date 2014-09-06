@@ -7,7 +7,8 @@ class Factory {
         'proxy'     => [ '\GM\Tela\ProxyInterface', '\GM\Tela\Proxy' ],
         'validator' => [ '\GM\Tela\ActionArgsValidatorInterface', '\GM\Tela\ActionArgsValidator' ],
         'jsmanager' => [ '\GM\Tela\JsManagerInterface', '\GM\Tela\JsManager' ],
-        'checker'   => [ '\GM\Tela\AjaxCheckerInterface', '\GM\Tela\AjaxChecker' ]
+        'checker'   => [ '\GM\Tela\AjaxCheckerInterface', '\GM\Tela\AjaxChecker' ],
+        'request'   => [ '\GM\Tela\RequestInterface', '\GM\Tela\Request' ]
     ];
     private static $registry = [ ];
     private $tela_id;

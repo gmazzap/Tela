@@ -421,9 +421,9 @@ class Tela {
             return FALSE;
         }
         if ( ! is_array( $vars ) ) {
-            $vars = Tela\Proxy::getRequestVars();
+            $vars = $this->getFactory()->registry( 'request' )->get();
         }
-        return isset( $vars[ 'is_tela' ] ) && $vars[ 'is_tela' ];
+        return is_array( $vars ) && isset( $vars[ 'is_tela' ] ) && $vars[ 'is_tela' ];
     }
 
     /**
@@ -466,7 +466,9 @@ class Tela {
         if ( $this->inited() !== 2 ) {
             return;
         }
-        $proxy = $this->getFactory()->registry( 'proxy', '', [ self::$instances ] );
+        $proxy = $this->getFactory()->registry(
+            'proxy', '', [ self::$instances, $this->getFactory()->registry( 'request' ) ]
+        );
         if ( is_wp_error( $proxy ) ) {
             return $proxy;
         }
@@ -544,7 +546,7 @@ class Tela {
      */
     private function check( Array $vars = [ ], $checker_class = NULL ) {
         if ( empty( $vars ) ) {
-            $vars = Tela\Proxy::getRequestVars();
+            $vars = $this->getFactory()->registry( 'request' )->get();
         }
         $action = isset( $vars[ 'action' ] ) ? $this->getAction( $vars[ 'action' ] ) : FALSE;
         if ( ! $action instanceof Tela\ActionInterface ) {
@@ -590,7 +592,7 @@ class Tela {
      */
     private function handleBadExit( $vars = NULL ) {
         if ( ! is_array( $vars ) ) {
-            $vars = Tela\Proxy::getRequestVars();
+            $vars = $this->getFactory()->registry( 'request' )->get();
         }
         if ( $this->isTelaAjax( $vars ) ) {
             $action = $this->getAction( $vars[ 'action' ] );

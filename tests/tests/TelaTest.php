@@ -85,7 +85,9 @@ class TelaTest extends TestCase {
     }
 
     function testWhenLoadedInitAjax() {
-        $proxy = \Mockery::mock( 'ProxyInterface' );
+        $proxy = \Mockery::mock( 'GM\Tela\ProxyInterface' );
+        $request = \Mockery::mock( 'GM\Tela\Request' );
+        $factory = \Mockery::mock( 'GM\Tela\Factory' );
         $tela = $this->getMockedTela( 'test' );
         \WP_Mock::wpFunction( 'current_filter', [
             'times'  => 1,
@@ -107,14 +109,16 @@ class TelaTest extends TestCase {
             'args'   => [ \GM\Tela\Proxy::HOOK, [ $proxy, 'proxy' ] ],
             'return' => FALSE,
         ] );
+        $factory->shouldReceive( 'registry' )->atLeast( 1 )->with( 'request' )->andReturn( $request );
+        $factory->shouldReceive( 'registry' )
+            ->atLeast( 1 )
+            ->with( 'proxy', '', [ [ ], $request ] )
+            ->andReturn( $proxy );
         $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
         $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isTelaAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
-        $tela->shouldReceive( 'getFactory->registry' )
-            ->once()
-            ->with( 'proxy', '', [ [ ] ] )
-            ->andReturn( $proxy );
+        $tela->shouldReceive( 'getFactory' )->atLeast( 1 )->withNoArgs()->andReturn( $factory );
         \WP_Mock::expectAction( 'tela_register_test', $tela );
         \WP_Mock::expectActionAdded( \GM\Tela\Proxy::HOOK, [ $proxy, 'proxy' ] );
         \WP_Mock::expectActionAdded( \GM\Tela\Proxy::HOOKNOPRIV, [ $proxy, 'proxy' ] );
