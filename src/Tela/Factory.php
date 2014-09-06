@@ -40,11 +40,10 @@ class Factory {
     public function registerType( $id, $interface, $default_class ) {
         if (
             ! isset( self::$types[ $id ] )
-            && is_string( $id )
-            && interface_exists( $interface )
-            && class_exists( $default_class )
+            && is_string( $id ) && is_string( $interface ) && is_string( $default_class )
+            && interface_exists( $interface ) && class_exists( $default_class )
         ) {
-            self::$types[ $id ] = [$interface, $default_class ];
+            self::$types[ $id ] = [ $interface, $default_class ];
         }
     }
 
@@ -61,7 +60,7 @@ class Factory {
         try {
             return empty( $args ) ? $ref->newInstance() : $ref->newInstanceArgs( $args );
         } catch ( \Exception $e ) {
-            return new Error( 'tela-bad-factory-' . get_class( $e ), $e->getMessage() );
+            return new Error( 'tela-bad-factory-' . strtolower( get_class( $e ) ), $e->getMessage() );
         }
     }
 
