@@ -178,12 +178,72 @@ class Tela {
     }
 
     /**
+     * Getter for shared var.
+     *
+     * @return mixed
+     */
+    public function getShared() {
+        return $this->shared;
+    }
+
+    /**
+     * Check if a string is a valid action id
+     *
+     * @param string $i The string to check
+     * @return boolean
+     */
+    public function isAction( $i ) {
+        return is_string( $i )
+            && isset( $this->actions[ $i ] )
+            && $this->actions[ $i ] instanceof Tela\ActionInterface;
+    }
+
+    /**
+     * Check if there are any registered action for current side
+     *
+     * @return boolean
+     */
+    public function hasActions() {
+        return $this->on_side > 0 || ( $this->isAjax() && count( $this->actions ) > 0 );
+    }
+
+    /**
+     * Take an register action id and return the related action object (if exists).
+     *
+     * @param string $action
+     * @return GM\Tela\ActionInterface|vois
+     */
+    public function getAction( $action ) {
+        return $this->isAction( $action ) ? $this->actions[ $action ] : NULL;
+    }
+
+    /**
+     * Getter for salt string.
+     *
+     * @return string
+     */
+    public function getNonceSalt() {
+        return $this->salt;
+    }
+
+    /**
+     * Get a strored nonce fo a specific action id.
+     *
+     * @param string $action
+     * @return string
+     */
+    public function getActionNonce( $action ) {
+        return isset( $this->nonces[ $action ] ) ? $this->nonces[ $action ] : '';
+    }
+
+    /**
      * Check if the instance is allowed to run.
      */
     public function allowed() {
+        $user = is_user_loggen_in() ? wp_get_current_user() : FALSE;
         return is_callable( $this->when ) ?
-            (bool) call_user_func( $this->when, $this->isAjax() ) :
-            (bool) $this->when;
+            (bool) call_user_func( $this->when, $this->isAjax(), $user, $this->getShared() ) :
+             ! empty( $this->when );
     }
 
     /**
@@ -251,6 +311,14 @@ class Tela {
         return $regitered;
     }
 
+    /**
+     * Perform the callback associated to the required action.
+     * Request is stopped (die) at end of the function.
+     * Output is handled according to action settings.
+     *
+     * @param array $vars Request variables
+     * @return void
+     */
     public function performAction( Array $vars = [ ] ) {
         if ( ! $this->isAjax() || ! $this->allowed() || $this->check( $vars ) !== TRUE ) {
             return $this->isAjax() ? $this->handleBadExit( $vars ) : NULL;
@@ -263,8 +331,8 @@ class Tela {
         if ( is_callable( $sanitize_cb ) ) {
             $vars[ 'data' ] = call_user_func( $sanitize_cb, $vars[ 'data' ] );
         }
-        $args = ! is_null( $this->shared ) ?
-            [ $vars[ 'data' ], $this->shared ] :
+        $args = ! is_null( $this->getShared() ) ?
+            [ $vars[ 'data' ], $this->getShared() ] :
             [ $vars[ 'data' ] ];
         ob_start();
         $data = call_user_func_array( $action->getCallback(), $args );
@@ -273,56 +341,6 @@ class Tela {
             $data = $output;
         }
         $this->handleExit( $action, $data );
-    }
-
-    /**
-     * Check if a string is a valid action id
-     *
-     * @param string $i The string to check
-     * @return boolean
-     */
-    public function isAction( $i ) {
-        return is_string( $i )
-            && isset( $this->actions[ $i ] )
-            && $this->actions[ $i ] instanceof Tela\ActionInterface;
-    }
-
-    /**
-     * Check if there are any registered action for current side
-     *
-     * @return boolean
-     */
-    public function hasActions() {
-        return $this->on_side > 0 || ( $this->isAjax() && count( $this->actions ) > 0 );
-    }
-
-    /**
-     * Take an register action id and return the related action object (if exists).
-     *
-     * @param string $action
-     * @return GM\Tela\ActionInterface|vois
-     */
-    public function getAction( $action ) {
-        return $this->isAction( $action ) ? $this->actions[ $action ] : NULL;
-    }
-
-    /**
-     * Getter for salt string.
-     *
-     * @return string
-     */
-    public function getNonceSalt() {
-        return $this->salt;
-    }
-
-    /**
-     * Get a strored nonce fo a specific action id.
-     *
-     * @param string $action
-     * @return string
-     */
-    public function getActionNonce( $action ) {
-        return isset( $this->nonces[ $action ] ) ? $this->nonces[ $action ] : '';
     }
 
     /**
@@ -422,7 +440,7 @@ class Tela {
         return new Tela\Error( "tela-error-{$code}", $message, $data );
     }
 
-################################################################################# Internal Stuff
+################################################################################# INTERNAL STUFF
 
     /**
      *
