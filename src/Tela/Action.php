@@ -109,7 +109,7 @@ class Action implements ActionInterface {
     }
 
     public function sanitize() {
-        $this->args = $this->getSanitizer()->sanitize( $this->args );
+        $this->args = $this->getSanitizer()->validate( $this->args );
     }
 
     /**
@@ -161,10 +161,10 @@ class Action implements ActionInterface {
     /**
      * Set a sanitizer object to be used for the action
      *
-     * @param \GM\Tela\ArgsSanitizerInterface $sanitizer
+     * @param \GM\Tela\ActionArgsValidatorInterface $sanitizer
      * @return \GM\Tela\Action
      */
-    public function setSanitizer( ArgsSanitizerInterface $sanitizer = NULL ) {
+    public function setSanitizer( ActionArgsValidatorInterface $sanitizer = NULL ) {
         $this->sanitizer = $sanitizer;
         return $this;
     }
@@ -172,11 +172,11 @@ class Action implements ActionInterface {
     /**
      * Get the saniter instance stored in the action.
      *
-     * @return \GM\Tela\ArgsSanitizerInterface|void
+     * @return \GM\Tela\ActionArgsValidatorInterface|void
      */
     public function getSanitizer() {
         if ( is_null( $this->sanitizer ) ) {
-            $this->sanitizer = new ArgsSanitizer;
+            $this->sanitizer = new ActionArgsValidator;
         }
         return $this->sanitizer;
     }

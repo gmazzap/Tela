@@ -1,8 +1,8 @@
 <?php namespace GM\Tela;
 
-class ArgsSanitizer implements ArgsSanitizerInterface {
+class ActionArgsValidator implements ActionArgsValidatorInterface {
 
-    public function sanitize( Array $args ) {
+    public function validate( Array $args ) {
 		$set = FALSE;
 		if ( ! isset( $args[ 'side' ] ) ) {
             $args[ 'side' ] = \GM\Tela::BACKEND;

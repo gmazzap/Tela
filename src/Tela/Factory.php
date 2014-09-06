@@ -5,7 +5,7 @@ class Factory {
     private static $types = [
         'action'    => [ '\GM\Tela\ActionInterface', '\GM\Tela\Action' ],
         'proxy'     => [ '\GM\Tela\ProxyInterface', '\GM\Tela\Proxy' ],
-        'sanitizer' => [ '\GM\Tela\ArgsSanitizerInterface', '\GM\Tela\ArgsSanitizer' ],
+        'validator' => [ '\GM\Tela\ActionArgsValidatorInterface', '\GM\Tela\ActionArgsValidator' ],
         'jsmanager' => [ '\GM\Tela\JsManagerInterface', '\GM\Tela\JsManager' ],
         'checker'   => [ '\GM\Tela\AjaxCheckerInterface', '\GM\Tela\AjaxChecker' ]
     ];

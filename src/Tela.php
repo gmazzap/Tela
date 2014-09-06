@@ -371,13 +371,13 @@ class Tela {
      * @param array $args
      * @return array
      */
-    public function sanitizeArgs( Array $args, $sanitizer_class = NULL ) {
-        /** @var Tela\ArgsSanitizerInterface */
-        $sanitizer = $this->getFactory()->get( 'sanitizer', $sanitizer_class );
-        if ( is_wp_error( $sanitizer ) ) {
-            return $sanitizer;
+    public function sanitizeArgs( Array $args, $validator_class = NULL ) {
+        /** @var GM\Tela\ActionArgsValidatorInterface */
+        $validator = $this->getFactory()->get( 'validator', $validator_class );
+        if ( is_wp_error( $validator ) ) {
+            return $validator;
         }
-        return $sanitizer->sanitize( $args );
+        return $validator->validate( $args );
     }
 
     /**

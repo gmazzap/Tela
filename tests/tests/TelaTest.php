@@ -283,18 +283,18 @@ class TelaTest extends TestCase {
         $error = new \WP_Error;
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'getFactory->get' )
-            ->with( 'sanitizer', NULL )->andReturn( $error );
-        assertEquals( $error, $tela->sanitizeArgs( [ ] ) );
+            ->with( 'validator', 'foo' )->andReturn( $error );
+        assertEquals( $error, $tela->sanitizeArgs( [ ], 'foo' ) );
     }
 
-    function testSanitizeArgsUseSanitizer() {
+    function testSanitizeArgsUseValidator() {
         $args = [ 'foo', 'bar' ];
         $tela = $this->getMockedTela( 'test' );
-        $sanitizer = \Mockery::mock( 'GM\Tela\ArgsSanitizerInterface' );
-        $sanitizer->shouldReceive( 'sanitize' )->once()->with( $args )->andReturn( 'Sanitized!' );
+        $validator = \Mockery::mock( 'GM\Tela\ActionArgsValidatorInterface' );
+        $validator->shouldReceive( 'validate' )->once()->with( $args )->andReturn( 'Valid!' );
         $tela->shouldReceive( 'getFactory->get' )
-            ->with( 'sanitizer', NULL )->andReturn( $sanitizer );
-        assertEquals( 'Sanitized!', $tela->sanitizeArgs( $args ) );
+            ->with( 'validator', 'ActionArgsValidator' )->andReturn( $validator );
+        assertEquals( 'Valid!', $tela->sanitizeArgs( $args, 'ActionArgsValidator' ) );
     }
 
     function testErrorReturnsWpError() {
