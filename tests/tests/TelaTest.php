@@ -297,4 +297,9 @@ class TelaTest extends TestCase {
         assertEquals( 'Sanitized!', $tela->sanitizeArgs( $args ) );
     }
 
+    function testErrorReturnsWpError() {
+        $tela = $this->getTela( 'test' );
+        assertInstanceOf( 'WP_Error', $tela->error() );
+    }
+
 }
