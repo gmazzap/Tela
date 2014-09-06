@@ -3,11 +3,11 @@
 interface AjaxCheckerInterface {
 
     /**
-     * Getter for the request array.
+     * Getter for the request vars array.
      *
      * @return array
      */
-    public function getRequest();
+    public function getRequestVars();
 
     /**
      * Getter for the action object.
@@ -17,11 +17,11 @@ interface AjaxCheckerInterface {
     public function getAction();
 
     /**
-     * Setter for the request array.
+     * Setter for the request vars array.
      *
-     * @param array $request
+     * @param array $request_vars
      */
-    public function setRequest( Array $request );
+    public function setRequestVars( Array $request_vars );
 
     /**
      * Setter for the action object.
@@ -33,7 +33,6 @@ interface AjaxCheckerInterface {
     /**
      * Check sanity of current request and action
      *
-     * @param array $request
      */
     public function checkRequest();
 
