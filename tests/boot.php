@@ -1,7 +1,9 @@
 <?php
 if ( ! defined( 'TELAPATH' ) ) define( 'TELAPATH', dirname( dirname( __FILE__ ) ) );
 
-require_once TELAPATH . '/tests/helpers/helpers.php';
+foreach ( glob( TELAPATH . "/tests/helpers/*.php" ) as $file ) {
+    require_once $file;
+}
 
 require_once TELAPATH . '/vendor/autoload.php';
 
