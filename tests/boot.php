@@ -1,4 +1,7 @@
 <?php
+if ( function_exists( 'do_action' ) ) {
+    return;
+}
 if ( ! defined( 'TELAPATH' ) ) define( 'TELAPATH', dirname( dirname( __FILE__ ) ) );
 
 foreach ( glob( TELAPATH . "/tests/helpers/*.php" ) as $file ) {
