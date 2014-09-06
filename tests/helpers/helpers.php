@@ -22,7 +22,7 @@ if ( ! class_exists( 'WP_Error' ) ) {
 if ( ! function_exists( 'is_wp_error' ) ) {
 
     function is_wp_error( $thing ) {
-        return $thing instanceof WP_Error;
+        return is_object( $thing ) && $thing instanceof WP_Error;
     }
 
 }
@@ -42,3 +42,12 @@ if ( ! function_exists( 'wp_die' ) ) {
     }
 
 }
+
+if ( ! function_exists( 'assertIsError' ) ) {
+
+    function assertIsError( $object ) {
+        return is_object( $object ) && $object instanceof \WP_Error;
+    }
+
+}
+
