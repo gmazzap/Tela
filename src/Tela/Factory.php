@@ -13,7 +13,7 @@ class Factory {
     private $tela_id;
 
     /**
-     * Set an instance of Tela in a property, it is used in filter
+     * Set an instance of Tela in a property, it is used in filter.
      *
      * @param string $tela_id
      */
@@ -22,7 +22,7 @@ class Factory {
     }
 
     /**
-     * Getter for the current tela id
+     * Getter for the current tela id.
      *
      * @return string
      */
@@ -31,7 +31,40 @@ class Factory {
     }
 
     /**
-     * Allow to register an additional object type
+     * Check if a type id is valid.
+     *
+     * @param string $type Type id to check
+     * @return boolean
+     */
+    public function hasType( $type ) {
+        return is_string( $type ) && array_key_exists( $type, self::$types );
+    }
+
+    /**
+     *  Get all registerd type ids.
+     *
+     * @return array
+     */
+    public function getTypes() {
+        return array_keys( self::types );
+    }
+
+    /**
+     * Check if a type id is valid and related object is stored in registry.
+     *
+     * @param string $type Type id to check
+     * @return boolean
+     */
+    public function hasRegistry( $type ) {
+        if ( ! $this->hasType( $type ) ) {
+            return;
+        }
+        $interface = self::$types[ $type ][ 0 ];
+        return isset( self::$registry[ $type ] ) && self::$registry[ $type ] instanceof $interface;
+    }
+
+    /**
+     * Allow to register an additional object type.
      *
      * @param string $id Id for the type
      * @param string $interface Interface name
@@ -48,7 +81,7 @@ class Factory {
     }
 
     /**
-     * Build an object based of a registered type, an optional class ans constructor arguments
+     * Build an object based of a registered type, an optional class ans constructor arguments.
      *
      * @param string $type Id for the allowed types
      * @param string $class Class name for the object, must implement the interface for the type
@@ -56,6 +89,10 @@ class Factory {
      * @return \GM\Tela\Error
      */
     public function factory( $type, $class = '', Array $args = [ ] ) {
+        $check = $this->checkArgs( $type, $class );
+        if ( is_wp_error( $check ) ) {
+            return $check;
+        }
         $ref = $this->getReflection( $type, $class );
         try {
             return empty( $args ) ? $ref->newInstance() : $ref->newInstanceArgs( $args );
@@ -76,8 +113,9 @@ class Factory {
      * @use \GM\Tela\Factory::factory()
      */
     public function get( $type, $class = NULL, Array $args = [ ] ) {
-        if ( ! is_string( $type ) || ! array_key_exists( $type, self::$types ) ) {
-            return new Error( 'tela-bad-factory-args', 'Bad factory arguments' );
+        $check = $this->checkArgs( $type, $class );
+        if ( is_wp_error( $check ) ) {
+            return $check;
         }
         if ( ! isset( $this->objects[ $type ] ) ) {
             $object = $this->factory( $type, $class, $args );
@@ -101,6 +139,10 @@ class Factory {
      * @use \GM\Tela\Factory::factory()
      */
     public function registry( $type, $class = NULL, Array $args = [ ] ) {
+        $check = $this->checkArgs( $type, $class );
+        if ( is_wp_error( $check ) ) {
+            return $check;
+        }
         if ( ! isset( self::$registry[ $type ] ) ) {
             $object = $this->factory( $type, $class, $args );
             if ( $object instanceof Error ) {
@@ -135,8 +177,14 @@ class Factory {
         return $ref;
     }
 
+    private function checkArgs( $type, $class ) {
+        if ( ! is_string( $type ) || ! array_key_exists( $type, self::$types ) ) {
+            return new Error( 'tela-bad-factory-args', 'Bad factory arguments' );
+        }
+    }
+
     /**
-     * Testing utility, disabled in WordPress context
+     * Testing utility, disabled in WordPress context.
      */
     public static function flushRegistry() {
         if ( ! function_exists( 'the_post' ) && ! empty( self::$registry ) ) {
