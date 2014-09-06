@@ -6,59 +6,16 @@ class Tela {
     const FRONTEND = 20;
     const BOTHSIDES = 30;
 
-    /**
-     * @var array Contains the intsnace ids
-     */
     private static $instances = [ ];
-
-    /**
-     * @var string Handle for the main javascript file
-     */
     private static $js_handle = '';
-
-    /**
-     * @var string Instance id
-     */
     private $id;
-
-    /**
-     * @var GM\Tela\Factory
-     */
     private $factory;
-
-    /**
-     * @var bool|callable Init the instance if this is TRUE (or returns TRUE)
-     */
     private $when;
-
-    /**
-     * @var mixed Variable to be passed to all the registered ajax callbacks
-     */
     private $shared;
-
-    /**
-     * @var int Set to true when instance has been inited
-     */
     private $init = 0;
-
-    /**
-     * @var array Contains all the registered actions
-     */
     private $actions = [ ];
-
-    /**
-     * @var int Count for registered action on current "side" (frontend / backend)
-     */
     private $on_side = 0;
-
-    /**
-     * @var array Contains all salted and base64-encoded  nonces for registered action.
-     */
     private $nonces = [ ];
-
-    /**
-     * @var string Salt string used to build nonces to be passed to browser via wp_localize_scripts
-     */
     private $salt = '';
 
     /**
@@ -347,9 +304,7 @@ class Tela {
         if ( ! $this->isAjax() || ! $this->allowed() || $this->check( $vars ) !== TRUE ) {
             return $this->isAjax() ? $this->handleBadExit( $vars ) : NULL;
         }
-        /**
-         * @var GM\Tela\ActionInterface
-         */
+        /** @var GM\Tela\ActionInterface */
         $action = $this->getAction( $vars[ 'action' ] );
         $sanitize_cb = $action->getVar( 'data_sanitize' );
         if ( is_callable( $sanitize_cb ) ) {
@@ -412,9 +367,7 @@ class Tela {
      * @return mixed
      */
     public function getActionVar( $action, $i ) {
-        /**
-         * @var GM\Tela\ActionInterface
-         */
+        /** @var GM\Tela\ActionInterface */
         $action = $this->getAction( $action );
         return is_null( $action ) ? $action : $action->getVar( $i );
     }
@@ -466,12 +419,6 @@ class Tela {
 
 ################################################################################# INTERNAL STUFF
 
-    /**
-     *
-     *
-     * @param string $action Action id
-     * @param array $args Action arguments
-     */
     private function registerOnFront( $action, Array $args = [ ] ) {
         $not_on_side = is_admin() ? self::FRONTEND : self::BACKEND;
         if ( $args[ 'side' ] !== $not_on_side ) {
@@ -480,16 +427,11 @@ class Tela {
         }
     }
 
-    /**
-     * Init class on ajax requests
-     *
-     * @return void
-     * @access private
-     */
     private function initAjax() {
         if ( $this->inited() !== 2 ) {
             return;
         }
+        /** @var GM\Tela\Proxy */
         $proxy = $this->getFactory()->registry(
             'proxy', '', [ self::$instances, $this->getFactory()->registry( 'request' ) ]
         );
@@ -502,16 +444,11 @@ class Tela {
         }
     }
 
-    /**
-     * Init class on non-ajax requests
-     *
-     * @return void
-     * @access private
-     */
     private function initFront() {
         if ( ( $this->inited() !== 2 || ! $this->hasActions() ) ) {
             return;
         }
+        /** @var GM\Tela\JsManagerInterface */
         $js_manager = $this->getFactory()->registry( 'jsmanager' );
         if ( is_wp_error( $js_manager ) ) {
             return $js_manager;
@@ -522,21 +459,11 @@ class Tela {
         }
     }
 
-    /**
-     * Instantiate an action object and setup it according to argumants.
-     *
-     * @param string $action Action object id
-     * @param callable $callback Callback for the action
-     * @param array $args Action arguments
-     * @param string $action_class Action class name, class must implement GM\Tela\ActionInterface
-     * @return void|GM\Tela\ActionInterface Return the action object during non-ajax requests
-     * @access private
-     */
     private function buildAction( $action, $callback, $args, $action_class ) {
         if ( $this->isAction( $action ) ) {
             return FALSE;
         }
-        /** @var Tela\ActionInterface */
+        /** @var GM\Tela\ActionInterface */
         $action_obj = $this->getFactory()->get( 'action', $action_class, [ $action ] );
         if ( is_wp_error( $action_obj ) ) {
             return $action_obj;
@@ -551,32 +478,21 @@ class Tela {
         return $action_obj;
     }
 
-    /**
-     * Build a nonce for the action
-     *
-     * @param string $action Action id
-     * @return string
-     */
     private function buildNonce( $action ) {
         return base64_encode( $this->salt . wp_create_nonce( $action ) );
     }
 
-    /**
-     * During ajax request check posted vars and returns true if everything seems fine:
-     * action is registered, user is logged in for private-only actions and nonce pass validation.
-     *
-     * @return boolean
-     * @access private
-     */
     private function check( Array $vars = [ ], $checker_class = NULL ) {
         if ( empty( $vars ) ) {
             $vars = $this->getFactory()->registry( 'request' )->get();
         }
-        $action = isset( $vars[ 'action' ] ) ? $this->getAction( $vars[ 'action' ] ) : FALSE;
+        $action = is_array( $vars ) && isset( $vars[ 'action' ] ) ?
+            $this->getAction( $vars[ 'action' ] ) :
+            FALSE;
         if ( ! $action instanceof Tela\ActionInterface ) {
             return FALSE;
         }
-        /** @var Tela\AjaxCheckerInterface */
+        /** @var GM\Tela\AjaxCheckerInterface */
         $checker = $this->getFactory()->get( 'checker', $checker_class, [ $vars, $action ] );
         if ( is_wp_error( $checker ) ) {
             return $checker;
@@ -584,14 +500,6 @@ class Tela {
         return $checker->checkRequest() && $checker->checkNonce( $this->salt );
     }
 
-    /**
-     * After an ajax callback ran, this returns echo its output according to settings, than exit.
-     *
-     * @param GM\Tela\ActionInterface $action
-     * @param mixed $data
-     * @return void
-     * @access private
-     */
     private function handleExit( Tela\ActionInterface $action, $data ) {
         $json = $action->getVar( 'json' );
         if ( empty( $json ) ) {
@@ -607,18 +515,12 @@ class Tela {
         wp_send_json( $data );
     }
 
-    /**
-     * When an action doesn't pass sanity check (is registered, pass nonce validation...)
-     * this method handle reques quit flow.
-     *
-     * @return void|boolean
-     * @access private
-     */
     private function handleBadExit( $vars = NULL ) {
         if ( ! is_array( $vars ) ) {
             $vars = $this->getFactory()->registry( 'request' )->get();
         }
-        if ( $this->isTelaAjax( $vars ) ) {
+        if ( is_array( $vars ) && $this->isTelaAjax( $vars ) ) {
+            /** @var GM\Tela\ActionInterface */
             $action = $this->getAction( $vars[ 'action' ] );
             // Chance to die() something different than default
             do_action( 'tela_not_pass_check', $action, $vars, $this );

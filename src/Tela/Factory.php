@@ -98,7 +98,7 @@ class Factory {
         try {
             return empty( $args ) ? $ref->newInstance() : $ref->newInstanceArgs( $args );
         } catch ( \Exception $e ) {
-            return new Error( 'tela-bad-factory-' . strtolower( get_class( $e ) ), $e->getMessage() );
+            return new Error( 'tela-factory-' . strtolower( get_class( $e ) ), $e->getMessage() );
         }
     }
 

@@ -12,7 +12,7 @@ class FactoryTest extends TestCase {
     function testFactoryError() {
         $error = $this->getFactory()->factory( 'stub', 'GM\Tela\Tests\EvilStub' );
         assertIsError( $error );
-        assertArrayHasKey( 'tela-bad-factory-reflectionexception', $error->errors );
+        assertArrayHasKey( 'tela-factory-reflectionexception', $error->errors );
     }
 
     function testFactoryBadArgs() {
