@@ -5,7 +5,19 @@ interface StubInterface {
     public function dump();
 }
 
-class Stub implements TestStubInterface {
+class Stub implements StubInterface {
+
+    public function dump() {
+        return get_object_vars( $this );
+    }
+
+}
+
+class EvilStub implements StubInterface {
+
+    private function __construct() {
+        $this->status = 'EVIL';
+    }
 
     public function dump() {
         return get_object_vars( $this );
