@@ -79,9 +79,12 @@ class Tela {
             if ( is_null( $factory ) ) {
                 $factory = new Tela\Factory;
             }
+            if ( ! is_bool( $when ) && ! is_callable( $when ) ) {
+                $when = TRUE;
+            }
             $tela = new $class( $id, $when, $factory, $shared );
-            if ( ! is_bool( $tela->when ) && ! is_callable( $tela->when ) ) {
-                $tela->when = $when;
+            if ( ! is_bool( $tela->getWhen() ) && ! is_callable( $tela->getWhen() ) ) {
+                $tela->setWhen( $when );
             }
             if ( $factory->getTelaId() !== $id ) {
                 $factory->setTelaId( $id );
@@ -150,9 +153,9 @@ class Tela {
         if ( empty( $id ) || ! is_string( $id ) ) {
             $id = uniqid( 'tela_' );
         }
-        $factory->setTelaId( $id );
         $this->id = $id;
-        $this->when = $when;
+        $this->setWhen( $when );
+        $factory->setTelaId( $id );
         $this->factory = $factory;
         if ( ! is_null( $shared ) ) {
             $this->shared = $shared;
@@ -166,6 +169,26 @@ class Tela {
      */
     public function getId() {
         return $this->id;
+    }
+
+    /**
+     * Getter for the when property
+     *
+     * @return mixed
+     */
+    public function getWhen() {
+        return $this->when;
+    }
+
+    /**
+     * Setter for the when property
+     *
+     * @return void
+     */
+    public function setWhen( $when ) {
+        if ( is_bool( $when ) || is_callable( $when ) ) {
+            $this->when = $when;
+        }
     }
 
     /**
@@ -211,7 +234,7 @@ class Tela {
      * Take an register action id and return the related action object (if exists).
      *
      * @param string $action
-     * @return GM\Tela\ActionInterface|vois
+     * @return GM\Tela\ActionInterface|void
      */
     public function getAction( $action ) {
         return $this->isAction( $action ) ? $this->actions[ $action ] : NULL;
@@ -241,13 +264,13 @@ class Tela {
      */
     public function allowed() {
         $user = is_user_loggen_in() ? wp_get_current_user() : FALSE;
-        return is_callable( $this->when ) ?
-            (bool) call_user_func( $this->when, $this->isAjax(), $user, $this->getShared() ) :
-             ! empty( $this->when );
+        return is_callable( $this->getWhen() ) ?
+            (bool) call_user_func( $this->getWhen(), $this->isAjax(), $user, $this->getShared() ) :
+             ! empty( $this->getWhen() );
     }
 
     /**
-     * Check if the instance has been inited, and between init() is called an 'wp_loaded' ran return 1
+     * Check if the instance has been inited, between init() ran and 'wp_loaded' is fired return 1
      */
     public function inited() {
         return $this->init === 1 ? 1 : $this->init > 1;
@@ -287,7 +310,7 @@ class Tela {
      * @param string $action Action id, must be unique for tela instance.
      * @param callable $callback Ajax callback
      * @param array $args Action args
-     * @param GM\Tela\ActionInterface $action_class Class name to be used for action object instance
+     * @param GM\Tela\ActionInterface $action_class Class name to be used for action object
      * @return GM\Tela\ActionInterface
      */
     public function register( $action, $callback, Array $args = [ ], $action_class = '' ) {
@@ -306,7 +329,8 @@ class Tela {
         try {
             $regitered = $this->buildAction( $action, $callback, $args, $action_class );
         } catch ( \Exception $e ) {
-            $regitered = $this->error( 'tela-error-' . strtolower( get_class( $e ) ), $e->getMessage() );
+            $code = 'tela-error-' . strtolower( get_class( $e ) );
+            $regitered = $this->error( $code, $e->getMessage() );
         }
         return $regitered;
     }
@@ -561,7 +585,7 @@ class Tela {
     }
 
     /**
-     * After an ajax callback ran, return / echo its output according to action settings, than exit.
+     * After an ajax callback ran, this returns echo its output according to settings, than exit.
      *
      * @param GM\Tela\ActionInterface $action
      * @param mixed $data
@@ -584,8 +608,8 @@ class Tela {
     }
 
     /**
-     * When an action does not pass check for sanity (is registered, pass nonce validation...) before
-     * being ran, this method handle the flow quit
+     * When an action doesn't pass sanity check (is registered, pass nonce validation...)
+     * this method handle reques quit flow.
      *
      * @return void|boolean
      * @access private
