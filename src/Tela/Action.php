@@ -7,7 +7,7 @@ class Action implements ActionInterface {
     private $args;
     private $callback;
     private $nonce;
-    private $sanitizer;
+    private $validator;
 
     /**
      * @var array Default action arguments
@@ -82,7 +82,7 @@ class Action implements ActionInterface {
             throw new \InvalidArgumentException;
         }
         $this->args[ $var ] = $value;
-        $this->sanitize();
+        $this->validate();
         return $this;
     }
 
@@ -95,7 +95,7 @@ class Action implements ActionInterface {
             unset( $args[ 'json_validate' ] );
             unset( $args[ 'send_json' ] );
             $this->args = array_merge( $args, [ 'json' => $json ] );
-            $this->sanitize();
+            $this->validate();
         }
         return $this;
     }
@@ -108,8 +108,8 @@ class Action implements ActionInterface {
         return $this;
     }
 
-    public function sanitize() {
-        $this->args = $this->getSanitizer()->validate( $this->args );
+    public function validate() {
+        $this->args = $this->getValidator()->validate( $this->args );
     }
 
     /**
@@ -159,26 +159,26 @@ class Action implements ActionInterface {
     }
 
     /**
-     * Set a sanitizer object to be used for the action
+     * Set a validator object to be used for the action
      *
-     * @param \GM\Tela\ActionArgsValidatorInterface $sanitizer
+     * @param \GM\Tela\ActionArgsValidatorInterface $validator
      * @return \GM\Tela\Action
      */
-    public function setSanitizer( ActionArgsValidatorInterface $sanitizer = NULL ) {
-        $this->sanitizer = $sanitizer;
+    public function setValidator( ActionArgsValidatorInterface $validator = NULL ) {
+        $this->validator = $validator;
         return $this;
     }
 
     /**
-     * Get the saniter instance stored in the action.
+     * Get the validator instance stored in the action (or instantiate and return it).
      *
      * @return \GM\Tela\ActionArgsValidatorInterface|void
      */
-    public function getSanitizer() {
-        if ( is_null( $this->sanitizer ) ) {
-            $this->sanitizer = new ActionArgsValidator;
+    public function getValidator() {
+        if ( is_null( $this->validator ) ) {
+            $this->validator = new ActionArgsValidator;
         }
-        return $this->sanitizer;
+        return $this->validator;
     }
 
 }

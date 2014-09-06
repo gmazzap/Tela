@@ -99,5 +99,5 @@ interface ActionInterface {
     /**
      * Ensure consistency for action arguemnts
      */
-    public function sanitize();
+    public function validate();
 }
