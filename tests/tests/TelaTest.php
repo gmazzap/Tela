@@ -71,6 +71,74 @@ class TelaTest extends TestCase {
         assertEquals( 'this_is_a_mocked_salt', $tela->getNonceSalt() );
     }
 
+    function testWhenLoadedInitAjax() {
+        $proxy = \Mockery::mock( 'ProxyInterface' );
+        $tela = $this->getMockedTela( 'test' );
+        \WP_Mock::wpFunction( 'current_filter', [
+            'times'  => 1,
+            'args'   => [ ],
+            'return' => 'wp_loaded',
+        ] );
+        \WP_Mock::wpFunction( 'remove_action', [
+            'times'  => 1,
+            'args'   => [ 'wp_loaded', [ $tela, 'whenLoaded' ], 0 ],
+            'return' => NULL,
+        ] );
+        \WP_Mock::wpFunction( 'wp_create_nonce', [
+            'times'  => 1,
+            'args'   => [ 'tela_test' ],
+            'return' => 'this_is_a_mocked_salt',
+        ] );
+        \WP_Mock::wpFunction( 'has_action', [
+            'times'  => 1,
+            'args'   => [ \GM\Tela\Proxy::HOOK, [ $proxy, 'proxy' ] ],
+            'return' => FALSE,
+        ] );
+        $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
+        $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
+        $tela->shouldReceive( 'isTelaAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
+        $tela->shouldReceive( 'getFactory->registry' )
+            ->once()
+            ->with( 'proxy', '', [ [ ] ] )
+            ->andReturn( $proxy );
+        \WP_Mock::expectAction( 'tela_register_test', $tela );
+        \WP_Mock::expectActionAdded( \GM\Tela\Proxy::HOOK, [ $proxy, 'proxy' ] );
+        \WP_Mock::expectActionAdded( \GM\Tela\Proxy::HOOKNOPRIV, [ $proxy, 'proxy' ] );
+        assertNull( $tela->whenLoaded() );
+    }
+
+    function testWhenLoadedInitFront() {
+        $tela = $this->getMockedTela( 'test' );
+        $js_manager = \Mockery::mock( 'JsManagerInterface' );
+        \WP_Mock::wpFunction( 'current_filter', [
+            'times'  => 1,
+            'args'   => [ ],
+            'return' => 'wp_loaded',
+        ] );
+        \WP_Mock::wpFunction( 'remove_action', [
+            'times'  => 1,
+            'args'   => [ 'wp_loaded', [ $tela, 'whenLoaded' ], 0 ],
+            'return' => NULL,
+        ] );
+        \WP_Mock::wpFunction( 'wp_create_nonce', [
+            'times'  => 1,
+            'args'   => [ 'tela_test' ],
+            'return' => 'this_is_a_mocked_salt',
+        ] );
+        \WP_Mock::expectAction( 'tela_register_test', $tela );
+        $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
+        $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( FALSE );
+        $tela->shouldReceive( 'hasActions' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
+        $tela->shouldReceive( 'getFactory->registry' )
+            ->once()
+            ->with( 'jsmanager' )
+            ->andReturn( $js_manager );
+        $js_manager->shouldReceive( 'addNonces' )->once()->with( [ ] )->andReturnNull();
+        $js_manager->shouldReceive( 'enabled' )->once()->withNoArgs()->andReturn( FALSE );
+        $js_manager->shouldReceive( 'enable' )->once()->withNoArgs()->andReturnNull();
+        assertNull( $tela->whenLoaded() );
+    }
+
     function testRegisterOnFront() {
         \WP_Mock::wpFunction( 'is_admin', [
             'times'  => 1,
@@ -106,7 +174,8 @@ class TelaTest extends TestCase {
         $tela->shouldReceive( 'sanitizeArgs' )->once()->with( \Mockery::type( 'array' ) )->andReturn( $args );
         $tela->shouldReceive( 'checkRegisterVars' )->once()->with( 'test::foo', NULL )->andReturnNull();
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( TRUE );
-        $tela->shouldReceive( 'getFactory->factory' )->andReturn( $action_obj );
+        $tela->shouldReceive( 'getFactory->get' )->with( 'action', '', [ 'test::foo' ] )
+            ->andReturn( $action_obj );
         $registered = $tela->register( 'foo', NULL, $args );
         assertEquals( $action_obj, $registered );
         assertEquals( $action_obj, $tela->getAction( 'test::foo' ) );
@@ -151,7 +220,7 @@ class TelaTest extends TestCase {
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getAction' )->atLeast( 1 )->with( 'foo' )->andReturn( $action_obj );
         $tela->shouldReceive( 'getNonceForAction' )->atLeast( 1 )->with( 'foo' )->andReturn( 'nonce' );
-        $tela->shouldReceive( 'getFactory->factory' )
+        $tela->shouldReceive( 'getFactory->get' )
             ->with( 'checker', NULL, [ $args, $action_obj ] )
             ->andReturn( $checker );
         assertNull( $tela->performAction( $args ) );
@@ -177,7 +246,7 @@ class TelaTest extends TestCase {
     function testSanitizeArgsErrorIfBadSanitizer() {
         $error = new \WP_Error;
         $tela = $this->getMockedTela( 'test' );
-        $tela->shouldReceive( 'getFactory->factory' )
+        $tela->shouldReceive( 'getFactory->get' )
             ->with( 'sanitizer', NULL )->andReturn( $error );
         assertEquals( $error, $tela->sanitizeArgs( [ ] ) );
     }
@@ -187,7 +256,7 @@ class TelaTest extends TestCase {
         $tela = $this->getMockedTela( 'test' );
         $sanitizer = \Mockery::mock( 'GM\Tela\ArgsSanitizerInterface' );
         $sanitizer->shouldReceive( 'sanitize' )->once()->with( $args )->andReturn( 'Sanitized!' );
-        $tela->shouldReceive( 'getFactory->factory' )
+        $tela->shouldReceive( 'getFactory->get' )
             ->with( 'sanitizer', NULL )->andReturn( $sanitizer );
         assertEquals( 'Sanitized!', $tela->sanitizeArgs( $args ) );
     }
