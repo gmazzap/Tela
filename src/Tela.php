@@ -360,7 +360,7 @@ class Tela {
         /** @var GM\Tela\ActionArgsValidatorInterface */
         $validator = $this->getFactory()->get( 'validator', $validator_class );
         if ( is_wp_error( $validator ) ) {
-            return $validator;
+            return $args;
         }
         return $validator->validate( $args );
     }
