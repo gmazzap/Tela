@@ -28,9 +28,17 @@ class JsManager implements JsManagerInterface {
         return $this->nonces;
     }
 
+    public function scriptAdded() {
+        return $this->script_added;
+    }
+
+    public function noncesAdded() {
+        return $this->nonces_added;
+    }
+
     public function addScript() {
-        if ( $this->script_added ) {
-            return;
+        if ( $this->scriptAdded() ) {
+            return FALSE;
         }
         $this->script_added = TRUE;
         $min = defined( 'WP_DEBUG' ) && WP_DEBUG ? '' : '.min';
@@ -48,8 +56,8 @@ class JsManager implements JsManagerInterface {
     }
 
     public function addNoncesData() {
-        if ( $this->nonces_added || ! $this->script_added ) {
-            return;
+        if ( $this->noncesAdded() || ! $this->scriptAdded() ) {
+            return FALSE;
         }
         $this->nonces_added = TRUE;
         $nonces = $this->getNonces();
@@ -69,11 +77,11 @@ class JsManager implements JsManagerInterface {
         return $this->handle;
     }
 
-    private function getScriptUrl( $base, $relative ) {
+    public function getScriptUrl( $base, $relative ) {
         return plugins_url( $relative, $base );
     }
 
-    private function getScriptVer( $base, $relative ) {
+    public function getScriptVer( $base, $relative ) {
         $ver = NULL;
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             $ver = @filemtime( plugin_dir_path( $base ) . $relative ) ? : uniqid();
@@ -81,7 +89,7 @@ class JsManager implements JsManagerInterface {
         return $ver;
     }
 
-    private function getScriptData() {
+    public function getScriptData() {
         $url_args = [
             'telaajax' => '1',
             'action'   => 'telaajax_proxy',
