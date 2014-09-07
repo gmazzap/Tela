@@ -2,6 +2,87 @@
 
 class TelaTest extends TestCase {
 
+    private function getMockedFactory() {
+        $factory = \Mockery::mock( 'GM\Tela\Factory' )->makePartial();
+        return $factory;
+    }
+
+    private function getTela( $id, $allowed = TRUE, $factory = NULL, $shared = NULL ) {
+        if ( ! $factory instanceof GM\Tela\Factory ) {
+            $factory = $this->getMockedFactory();
+        }
+        return new \GM\Tela( $id, $allowed, $factory, $shared );
+    }
+
+    private function getMockedTela( $id = 'test' ) {
+        $tela = \Mockery::mock( 'GM\Tela' )->makePartial();
+        $tela->shouldReceive( 'getId' )->withNoArgs()->andReturn( $id );
+        return $tela;
+    }
+
+    function testAllowedFalseIdBadAction() {
+        \WP_Mock::wpFunction( 'did_action', [
+            'times'  => 1,
+            'args'   => [ 'wp_loaded' ],
+            'return' => FALSE,
+        ] );
+        \WP_Mock::wpFunction( 'doing_action', [
+            'times'  => 1,
+            'args'   => [ 'wp_loaded' ],
+            'return' => FALSE,
+        ] );
+        $tela = $this->getTela( 'test' );
+        assertFalse( $tela->allowed() );
+    }
+
+    function testAllowedTrueWhenTrue() {
+        \WP_Mock::wpFunction( 'did_action', [
+            'times'  => 1,
+            'args'   => [ 'wp_loaded' ],
+            'return' => TRUE,
+        ] );
+        $tela = $this->getMockedTela( 'test' );
+        $tela->shouldReceive( 'getWhen' )->andReturn( TRUE );
+        assertTrue( $tela->allowed() );
+    }
+
+    function testAllowedTrueWhenReturnTrue() {
+        $currentuser = \Mockery::mock( 'WP_User' );
+        $stub = new Stub;
+        \WP_Mock::wpFunction( 'did_action', [ 'args' => [ 'wp_loaded' ], 'return' => TRUE ] );
+        \WP_Mock::wpFunction( 'is_user_logged_in', [ 'return' => TRUE ] );
+        \WP_Mock::wpFunction( 'wp_get_current_user', [ 'return' => $currentuser ] );
+        $tela = $this->getMockedTela( 'test' );
+        $when = function( $is_ajax, $shared, $user ) use( $currentuser, $stub ) {
+            assertSame( $currentuser, $user );
+            assertSame( $stub, $shared );
+            assertTrue( $is_ajax );
+            return TRUE;
+        };
+        $tela->shouldReceive( 'getWhen' )->andReturn( $when );
+        $tela->shouldReceive( 'getShared' )->andReturn( $stub );
+        $tela->shouldReceive( 'isAjax' )->andReturn( TRUE );
+        assertTrue( $tela->allowed() );
+    }
+
+    function testAllowedFalseWhenReturnFalsey() {
+        $currentuser = \Mockery::mock( 'WP_User' );
+        $stub = new Stub;
+        \WP_Mock::wpFunction( 'did_action', [ 'args' => [ 'wp_loaded' ], 'return' => TRUE ] );
+        \WP_Mock::wpFunction( 'is_user_logged_in', [ 'return' => TRUE ] );
+        \WP_Mock::wpFunction( 'wp_get_current_user', [ 'return' => $currentuser ] );
+        $tela = $this->getMockedTela( 'test' );
+        $when = function( $is_ajax, $shared, $user ) use( $currentuser, $stub ) {
+            assertSame( $currentuser, $user );
+            assertSame( $stub, $shared );
+            assertTrue( $is_ajax );
+        };
+        $tela->shouldReceive( 'getWhen' )->andReturn( $when );
+        $tela->shouldReceive( 'getShared' )->andReturn( $stub );
+        $tela->shouldReceive( 'isAjax' )->andReturn( TRUE );
+        assertFalse( $tela->allowed() );
+    }
+
     function testInitDoNothingIfDidAction() {
         \WP_Mock::wpFunction( 'did_action', [
             'times'  => 1,
