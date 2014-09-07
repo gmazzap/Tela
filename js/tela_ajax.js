@@ -166,7 +166,7 @@ var TelaAjax = {};
                 response.done(settings.done);
             }
             if ($.isFunction(settings.fail)) {
-                response.fail(settings.done);
+                response.fail(settings.fail);
             }
             if ($.isFunction(settings.always)) {
                 response.always(settings.always);
