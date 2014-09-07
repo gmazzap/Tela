@@ -272,5 +272,5 @@ var TelaAjax = {};
         return this;
     };
 
-// TelaAjaxUrl and TelaAjaxDataNonces comes from wp_localize_script
+// TelaAjaxData and TelaAjaxNonces comes from wp_localize_script
 })(jQuery, TelaAjaxData, TelaAjaxNonces, TelaAjax, window);
