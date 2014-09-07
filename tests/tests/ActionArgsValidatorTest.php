@@ -29,7 +29,7 @@ class ActionArgsValidatorTest extends TestCase {
         assertFalse( $validated_b[ 'public' ] );
     }
 
-    function testValidatePublicForceFrontendIfSide() {
+    function testValidateBackendForceNotPublicIfConflict() {
         $validator = new Validator;
         $validated = $validator->validate( [ 'side' => T::BACKEND, 'public' => TRUE ] );
         assertSame( T::BACKEND, $validated[ 'side' ] );
