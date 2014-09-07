@@ -39,6 +39,7 @@ class AjaxCheckerTest extends TestCase {
     function testCheckRequestFailsIfBadBlogId() {
         \WP_Mock::wpFunction( 'is_user_logged_in', [ 'return' => TRUE ] );
         $checker = $this->getChecker( $this->getValidArgs() );
+        // get_current_blog_id() returns 1 by design. See `tests/helpers/helpers.php`
         $this->validAction( 2 );
         assertFalse( $checker->checkRequest() );
     }
@@ -62,8 +63,7 @@ class AjaxCheckerTest extends TestCase {
         \WP_Mock::wpFunction( 'wp_verify_nonce', [
             'return' => function( $a, $b ) {
             return $a === $b;
-        }
-        ] );
+        } ] );
         $nonce = base64_encode( 'salt_test' );
         $this->action->shouldReceive( 'getNonce' )->withNoArgs()->andReturn( $nonce );
         assertTrue( $checker->checkNonce( 'salt_' ) );
@@ -74,8 +74,7 @@ class AjaxCheckerTest extends TestCase {
         \WP_Mock::wpFunction( 'wp_verify_nonce', [
             'return' => function( $a, $b ) {
             return $a === $b;
-        }
-        ] );
+        } ] );
         $nonce = base64_encode( 'salt_test' );
         $this->action->shouldReceive( 'getNonce' )->withNoArgs()->andReturn( $nonce );
         assertFalse( $checker->checkNonce( '_salt_' ) );

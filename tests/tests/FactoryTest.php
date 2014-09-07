@@ -31,7 +31,7 @@ class FactoryTest extends TestCase {
             ->with( 'GM\Tela\Tests\Stub' )
             ->reply( 'GM\Tela\Tests\StubAlt' );
         $stub = $this->getFactory()->factory( 'stub', 'GM\Tela\Tests\Stub' );
-        assertEquals( 'GM\Tela\Tests\StubAlt', get_class( $stub ) );
+        assertSame( 'GM\Tela\Tests\StubAlt', get_class( $stub ) );
     }
 
     function testFactoryFilteredFail() {
@@ -40,17 +40,17 @@ class FactoryTest extends TestCase {
             ->reply( 'GM\Tela\Tests\Meh' );
         $stub = $this->getFactory()->factory( 'stub', 'GM\Tela\Tests\Stub' );
         assertNotInstanceOf( 'GM\Tela\Tests\StubAlt', $stub );
-        assertEquals( 'GM\Tela\Tests\Stub', get_class( $stub ) );
+        assertSame( 'GM\Tela\Tests\Stub', get_class( $stub ) );
     }
 
     function testFactoryAlt() {
         $stub = $this->getFactory()->factory( 'stub', 'GM\Tela\Tests\StubAlt' );
-        assertEquals( 'GM\Tela\Tests\StubAlt', get_class( $stub ) );
+        assertSame( 'GM\Tela\Tests\StubAlt', get_class( $stub ) );
     }
 
     function testFactoryTurnDefault() {
         $stub = $this->getFactory()->factory( 'stub', 'GM\Tela\Tests\Meh' );
-        assertEquals( 'GM\Tela\Tests\Stub', get_class( $stub ) );
+        assertSame( 'GM\Tela\Tests\Stub', get_class( $stub ) );
     }
 
     function testGetBadArgs() {

@@ -108,7 +108,7 @@ class TelaTest extends TestCase {
         $tela = $this->getTela( 'test' );
         \WP_Mock::expectActionAdded( 'wp_loaded', [ $tela, 'whenLoaded' ], 0 );
         $tela->init();
-        assertEquals( 1, $tela->inited() );
+        assertSame( 1, $tela->inited() );
     }
 
     function testWhenLoadedDoNothingIfInited() {
@@ -162,7 +162,7 @@ class TelaTest extends TestCase {
         ] );
         \WP_Mock::expectAction( 'tela_register_test', $tela );
         assertNull( $tela->whenLoaded() );
-        assertEquals( 'this_is_a_mocked_salt', $tela->getNonceSalt() );
+        assertSame( 'this_is_a_mocked_salt', $tela->getNonceSalt() );
     }
 
     function testWhenLoadedInitAjax() {
@@ -262,7 +262,7 @@ class TelaTest extends TestCase {
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( FALSE );
         $expected = base64_encode( 'nonce_for_foo' );
         assertNull( $tela->register( 'foo', NULL, $args ) );
-        assertEquals( $expected, $tela->getActionNonce( 'test::foo' ) );
+        assertSame( $expected, $tela->getActionNonce( 'test::foo' ) );
     }
 
     function testRegisterOnAjax() {
@@ -289,9 +289,9 @@ class TelaTest extends TestCase {
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'getFactory' )->withNoArgs()->andReturn( $factory );
         $registered = $tela->register( 'foo', NULL, $args );
-        assertEquals( $action_obj, $registered );
-        assertEquals( $action_obj, $tela->getAction( 'test::foo' ) );
-        assertEquals( $nonce, $tela->getActionNonce( 'test::foo' ) );
+        assertSame( $action_obj, $registered );
+        assertSame( $action_obj, $tela->getAction( 'test::foo' ) );
+        assertSame( $nonce, $tela->getActionNonce( 'test::foo' ) );
     }
 
     function testPerformActionAjaxNullIfNonAjax() {
@@ -373,7 +373,7 @@ class TelaTest extends TestCase {
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'getFactory->get' )
             ->with( 'validator', 'foo' )->andReturn( $error );
-        assertEquals( $error, $tela->sanitizeArgs( [ ], 'foo' ) );
+        assertSame( $error, $tela->sanitizeArgs( [ ], 'foo' ) );
     }
 
     function testSanitizeArgsUseValidator() {
@@ -383,7 +383,7 @@ class TelaTest extends TestCase {
         $validator->shouldReceive( 'validate' )->once()->with( $args )->andReturn( 'Valid!' );
         $tela->shouldReceive( 'getFactory->get' )
             ->with( 'validator', 'ActionArgsValidator' )->andReturn( $validator );
-        assertEquals( 'Valid!', $tela->sanitizeArgs( $args, 'ActionArgsValidator' ) );
+        assertSame( 'Valid!', $tela->sanitizeArgs( $args, 'ActionArgsValidator' ) );
     }
 
     function testErrorReturnsWpError() {
