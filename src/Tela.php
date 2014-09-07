@@ -220,10 +220,16 @@ class Tela {
      * Check if the instance is allowed to run.
      */
     public function allowed() {
-        $user = is_user_loggen_in() ? wp_get_current_user() : FALSE;
-        return is_callable( $this->getWhen() ) ?
-            (bool) call_user_func( $this->getWhen(), $this->isAjax(), $user, $this->getShared() ) :
-             ! empty( $this->getWhen() );
+        $allowed = FALSE;
+        if ( did_action( 'wp_loaded' ) || doing_action( 'wp_loaded' ) ) {
+            $when = $this->getWhen();
+            $user = is_user_loggen_in() ? wp_get_current_user() : NULL;
+            $args = [ $when, $this->isAjax(), $this->getShared(), $user ];
+            $allowed = is_callable( $when ) ?
+                (bool) call_user_func_array( $when, $args ) :
+                 ! empty( $when );
+        }
+        return $allowed;
     }
 
     /**
