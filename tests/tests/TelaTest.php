@@ -114,7 +114,7 @@ class TelaTest extends TestCase {
             ->atLeast( 1 )
             ->with( 'proxy', '', [ [ ], $request ] )
             ->andReturn( $proxy );
-        $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
+        $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, TRUE );
         $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isTelaAjax' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );
@@ -144,7 +144,7 @@ class TelaTest extends TestCase {
             'return' => 'this_is_a_mocked_salt',
         ] );
         \WP_Mock::expectAction( 'tela_register_test', $tela );
-        $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, 2 );
+        $tela->shouldReceive( 'inited' )->atLeast( 1 )->withNoArgs()->andReturn( 1, TRUE );
         $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'isAjax' )->atLeast( 1 )->withNoArgs()->andReturn( FALSE );
         $tela->shouldReceive( 'hasActions' )->atLeast( 1 )->withNoArgs()->andReturn( TRUE );

@@ -223,7 +223,7 @@ class Tela {
         $allowed = FALSE;
         if ( did_action( 'wp_loaded' ) || doing_action( 'wp_loaded' ) ) {
             $when = $this->getWhen();
-            $user = is_user_loggen_in() ? wp_get_current_user() : NULL;
+            $user = is_user_logged_in() ? wp_get_current_user() : NULL;
             $args = [ $when, $this->isAjax(), $this->getShared(), $user ];
             $allowed = is_callable( $when ) ?
                 (bool) call_user_func_array( $when, $args ) :
@@ -434,7 +434,7 @@ class Tela {
     }
 
     private function initAjax() {
-        if ( $this->inited() !== 2 ) {
+        if ( $this->inited() !== TRUE ) {
             return;
         }
         /** @var GM\Tela\Proxy */
@@ -451,7 +451,7 @@ class Tela {
     }
 
     private function initFront() {
-        if ( ( $this->inited() !== 2 || ! $this->hasActions() ) ) {
+        if ( $this->inited() !== TRUE || ! $this->hasActions() ) {
             return;
         }
         /** @var GM\Tela\JsManagerInterface */
