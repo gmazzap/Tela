@@ -478,6 +478,7 @@ class Tela {
         $nonce = $this->buildNonce( $action );
         $action_obj->setNonce( $nonce );
         $action_obj->setCallback( $callback );
+        $action_obj->setValidator( $this->getFactory()->get( 'validator' ) );
         $action_obj->setArgs( $args );
         $this->nonces[ $action ] = $nonce;
         $this->actions[ $action ] = $action_obj;

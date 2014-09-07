@@ -191,18 +191,22 @@ class TelaTest extends TestCase {
         ] );
         $args = [ 'side' => \GM\Tela::FRONTEND ];
         $nonce = base64_encode( 'nonce_for_foo' );
+        $validator = \Mockery::mock( 'GM\Tela\ActionArgsValidatorInterface' );
         $action_obj = \Mockery::mock( 'GM\Tela\ActionInterface' );
         $action_obj->shouldReceive( 'setBlogId' )->once()->with( 1 )->andReturnNull();
         $action_obj->shouldReceive( 'setNonce' )->once()->with( $nonce )->andReturnNull();
         $action_obj->shouldReceive( 'setCallback' )->once()->with( NULL )->andReturnNull();
+        $action_obj->shouldReceive( 'setValidator' )->once()->with( $validator )->andReturnNull();
         $action_obj->shouldReceive( 'setArgs' )->once()->with( $args )->andReturnNull();
+        $factory = \Mockery::mock( 'GM\Tela\Factory' );
+        $factory->shouldReceive( 'get' )->with( 'action', '', [ 'test::foo' ] )->andReturn( $action_obj );
+        $factory->shouldReceive( 'get' )->with( 'validator' )->andReturn( $validator );
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'allowed' )->once()->withNoArgs()->andReturn( TRUE );
         $tela->shouldReceive( 'sanitizeArgs' )->once()->with( \Mockery::type( 'array' ) )->andReturn( $args );
         $tela->shouldReceive( 'checkRegisterVars' )->once()->with( 'test::foo', NULL )->andReturnNull();
         $tela->shouldReceive( 'isAjax' )->once()->withNoArgs()->andReturn( TRUE );
-        $tela->shouldReceive( 'getFactory->get' )->with( 'action', '', [ 'test::foo' ] )
-            ->andReturn( $action_obj );
+        $tela->shouldReceive( 'getFactory' )->withNoArgs()->andReturn( $factory );
         $registered = $tela->register( 'foo', NULL, $args );
         assertEquals( $action_obj, $registered );
         assertEquals( $action_obj, $tela->getAction( 'test::foo' ) );

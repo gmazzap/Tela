@@ -24,6 +24,13 @@ interface ActionInterface {
     public function getCallback();
 
     /**
+     * Get the validator instance stored in the action (or instantiate and return it).
+     *
+     * @return \GM\Tela\ActionArgsValidatorInterface|void
+     */
+    public function getValidator();
+
+    /**
      * Get a variable from action context
      *
      * @param string $var Variable to get
@@ -70,6 +77,13 @@ interface ActionInterface {
      * @return \GM\Tela\Action
      */
     public function setCallback( $callback );
+
+    /**
+     * Set a validator object to be used for the action
+     *
+     * @param \GM\Tela\ActionArgsValidatorInterface $validator
+     */
+    public function setValidator( ActionArgsValidatorInterface $validator );
 
     /**
      * Set an array of variables in the action context.

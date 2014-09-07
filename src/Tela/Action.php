@@ -38,6 +38,10 @@ class Action implements ActionInterface {
         return $this->callback;
     }
 
+    public function getValidator() {
+        return $this->validator;
+    }
+
     public function getVar( $var = '' ) {
         if ( ! is_string( $var ) ) {
             throw new \InvalidArgumentException;
@@ -77,6 +81,11 @@ class Action implements ActionInterface {
         return $this;
     }
 
+    public function setValidator( ActionArgsValidatorInterface $validator ) {
+        $this->validator = $validator;
+        return $this;
+    }
+
     public function setVar( $var, $value = NULL ) {
         if ( ! is_string( $var ) ) {
             throw new \InvalidArgumentException;
@@ -109,7 +118,9 @@ class Action implements ActionInterface {
     }
 
     public function validate() {
-        $this->args = $this->getValidator()->validate( $this->args );
+        if ( ! is_null( $this->getValidator() ) ) {
+            $this->args = $this->getValidator()->validate( $this->args );
+        }
     }
 
     /**
@@ -156,29 +167,6 @@ class Action implements ActionInterface {
     public function setJsonResponse( $return = TRUE, $validate = NULL ) {
         $json = $return && is_callable( $validate ) ? $validate :  ! empty( $return );
         return $this->setVar( 'json_validate', $json );
-    }
-
-    /**
-     * Set a validator object to be used for the action
-     *
-     * @param \GM\Tela\ActionArgsValidatorInterface $validator
-     * @return \GM\Tela\Action
-     */
-    public function setValidator( ActionArgsValidatorInterface $validator = NULL ) {
-        $this->validator = $validator;
-        return $this;
-    }
-
-    /**
-     * Get the validator instance stored in the action (or instantiate and return it).
-     *
-     * @return \GM\Tela\ActionArgsValidatorInterface|void
-     */
-    public function getValidator() {
-        if ( is_null( $this->validator ) ) {
-            $this->validator = new ActionArgsValidator;
-        }
-        return $this->validator;
     }
 
 }
