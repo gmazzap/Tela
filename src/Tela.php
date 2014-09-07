@@ -224,7 +224,7 @@ class Tela {
         if ( did_action( 'wp_loaded' ) || doing_action( 'wp_loaded' ) ) {
             $when = $this->getWhen();
             $user = is_user_logged_in() ? wp_get_current_user() : NULL;
-            $args = [ $when, $this->isAjax(), $this->getShared(), $user ];
+            $args = [ $this->isAjax(), $this->getShared(), $user ];
             $allowed = is_callable( $when ) ?
                 (bool) call_user_func_array( $when, $args ) :
                  ! empty( $when );
