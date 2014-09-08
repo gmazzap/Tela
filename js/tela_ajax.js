@@ -111,6 +111,60 @@ var TelaAjax = {};
     };
 
     Tela.PluginHelpers = {
+        ensureDataAttrType: function(data, type) {
+            if (typeof type !== 'string') {
+                type = 'string';
+            }
+            if (type === 'object' && data === null) {
+                data = '';
+            }
+            if (typeof data === type) {
+                return data;
+            }
+            if (typeof data === 'string' && data !== '') {
+                switch (type) {
+                    case 'boolean' :
+                        if (data === 'false' || data === '0') {
+                            return false;
+                        } else if (data === 'true' || data === '1') {
+                            return true;
+                        }
+                    case 'number' :
+                        return Number(data);
+                    case 'object' :
+                        try {
+                            return JSON.parse(data);
+                        } catch (e) {
+                            return null;
+                        }
+                }
+            }
+            return null;
+
+        },
+        getSettingByData: function(setting, dataid, lookfor, target) {
+            if (typeof lookfor !== 'string') {
+                lookfor = 'string';
+            }
+            var $target = (typeof target === 'string' && $(target).length > 0) ? $(target) : this;
+            if (lookfor === 'func') {
+                if ($.isFunction(setting) || $.isFunction(window[setting])) {
+                    return $.isFunction(setting) ? setting : window[setting];
+                } else {
+                    var bydata = $target.data('tela-' + dataid);
+                    if ($.isFunction(window[bydata])) {
+                        return window[bydata];
+                    }
+                }
+                return null;
+            } else if (typeof dataid === 'string') {
+                if (typeof setting !== lookfor || (lookfor === 'object' && setting === null)) {
+                    var bydata = $target.data('tela-' + dataid);
+                    return Tela.PluginHelpers.ensureDataAttrType(bydata, lookfor);
+                }
+            }
+            return typeof setting === 'undefined' ? null : setting;
+        },
         init: function(settings) {
             var defaults = {
                 action: null,
@@ -126,32 +180,19 @@ var TelaAjax = {};
                 always: null
             };
             settings = $.extend(defaults, settings);
-            if (typeof settings.action !== 'string' || settings.action === '') {
-                settings.action = $(this).data('tela-action');
+            settings.action = Tela.PluginHelpers.getSettingByData.apply(this, [settings.action, 'action']);
+            settings.event = Tela.PluginHelpers.getSettingByData.apply(this, [settings.event, 'event']);
+            if (!settings.action || !settings.event) {
+                return false;
             }
-            if (typeof settings.event !== 'string' || settings.event === '') {
-                settings.event = $(this).data('tela-event');
-            }
-            if (typeof settings.event !== 'string' || settings.event === '') {
-                return this;
-            }
-            if (typeof settings.subject !== 'string' || settings.subject === '') {
-                settings.subject = $(this).data('tela-subject');
-            }
+            settings.subject = Tela.PluginHelpers.getSettingByData.apply(this, [settings.subject, 'subject']);
             if (typeof settings.subject === 'string' && settings.subject !== '') {
                 settings.updateOn = 'subject-event';
-            } else if (typeof settings.updateOn !== 'string' || settings.updateOn === '') {
-                settings.updateOn = $(this).data('tela-update-on');
+            } else {
+                settings.updateOn = Tela.PluginHelpers.getSettingByData.apply(this, [settings.updateOn, 'update-on']);
             }
-            if (typeof $(this).data('tela-map-html') !== 'undefined') {
-                settings.html = $(this).data('tela-map-html');
-            }
-            if (!$.isFunction(settings.parseCb)) {
-                var callback = $(this).data('tela-map-callback');
-                if ($.isFunction(window[callback])) {
-                    settings.parseCb = window[callback];
-                }
-            }
+            settings.html = Tela.PluginHelpers.getSettingByData.apply(this, [settings.html, 'map-html', 'boolean']);
+            settings.parseCb = Tela.PluginHelpers.getSettingByData.apply(this, [settings.parseCb, 'map-callback', 'func']);
             return settings;
         },
         getPostData: function(args) {
@@ -162,7 +203,7 @@ var TelaAjax = {};
                     args.context = this;
                 }
                 if (typeof args.options === 'undefined') {
-                    args.options = null;
+                    args.options = {};
                 }
                 postdata = args.source.apply(args.context, [args.options]);
             } else if (typeof args.source === 'object') {
@@ -181,7 +222,7 @@ var TelaAjax = {};
             return (typeof selector !== 'string' || selector === '') ? false : selector;
         },
         response: function(response, settings) {
-            if (typeof response !== 'object') {
+            if (!Tela.Ajax.isValidAjaxResponse(response)) {
                 return false;
             }
             if ($.isFunction(settings.done)) {
@@ -196,6 +237,10 @@ var TelaAjax = {};
             return response;
         },
         runCallerUpdate: function(caller, target, settings, dataArgs) {
+            if (typeof dataArgs !== 'object') {
+                dataArgs = {};
+            }
+            settings = $.extend({action: null, ajax: null, html: null, parseCb: null}, settings);
             var args = {
                 target: target,
                 action: settings.action,
@@ -213,6 +258,7 @@ var TelaAjax = {};
             return Tela.PluginHelpers.response(response, args.settings);
         },
         runCallerAction: function(caller, settings) {
+            settings = $.extend({action: null, ajax: null, data: null}, settings);
             var args = {
                 source: settings.data,
                 context: caller
@@ -280,16 +326,18 @@ var TelaAjax = {};
 
     $.fn.telaAjax = function(settings) {
         settings = Tela.PluginHelpers.init.apply(this, [settings]);
-        switch (settings.updateOn) {
-            case 'subject-event' :
-                return Tela.PluginMethods.subjectEvent.apply(this, [settings]);
-            case 'global-event' :
-            case 'document-event' :
-                return Tela.PluginMethods.globalEvent.apply(this, [settings]);
-            case 'self-event' :
-                return Tela.PluginMethods.selfEvent.apply(this, [settings]);
-            default :
-                return Tela.PluginMethods.runAction.apply(this, [settings]);
+        if (typeof settings === 'object' && typeof settings.updateOn !== 'undefined') {
+            switch (settings.updateOn) {
+                case 'subject-event' :
+                    return Tela.PluginMethods.subjectEvent.apply(this, [settings]);
+                case 'global-event' :
+                case 'document-event' :
+                    return Tela.PluginMethods.globalEvent.apply(this, [settings]);
+                case 'self-event' :
+                    return Tela.PluginMethods.selfEvent.apply(this, [settings]);
+                default :
+                    return Tela.PluginMethods.runAction.apply(this, [settings]);
+            }
         }
         return this;
     };
