@@ -368,12 +368,12 @@ class TelaTest extends TestCase {
         assertInstanceOf( '\WP_Error', $tela->checkRegisterVars( 'foo', 'bar' ) );
     }
 
-    function testSanitizeArgsErrorIfBadSanitizer() {
+    function testSanitizeArgsPassthroughtIfBadSanitizer() {
         $error = new \WP_Error;
         $tela = $this->getMockedTela( 'test' );
         $tela->shouldReceive( 'getFactory->get' )
             ->with( 'validator', 'foo' )->andReturn( $error );
-        assertSame( $error, $tela->sanitizeArgs( [ ], 'foo' ) );
+        assertSame( [ ], $tela->sanitizeArgs( [ ], 'foo' ) );
     }
 
     function testSanitizeArgsUseValidator() {
