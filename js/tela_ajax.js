@@ -53,29 +53,34 @@ var TelaAjax = {};
             return jqXHR;
         },
         updateDataMap: function(args, jqXHR) {
+            var def = {target: {}, action: '', data: {}, settings: {}, html: true, parseCb: null};
+            args = $.extend(def, args);
+            var $target = $(args.target);
+            if ($target.length < 1 || $target.find('[data-tela-map]').length < 1) {
+                return false;
+            }
             if (!this.isValidAjaxResponse(jqXHR)) {
-                var def = {target: {}, action: '', data: {}, settings: {}, html: true, parseCb: null};
-                args = $.extend(def, args);
                 if (args.settings === null || typeof args.settings !== 'object') {
                     args.settings = {};
-                }
-                var $target = $(args.target);
-                if ($target.length < 1 || $target.find('[data-tela-map]').length < 1) {
-                    return false;
                 }
                 args.settings.dataType = 'json';
                 jqXHR = this.run(args.action, args.data, args.settings);
             }
             jqXHR.done(function(jsonData) {
                 Tela.Ajax.parseDataMap.apply(args.target, [jsonData, args]);
-            })
+            });
             return jqXHR;
         },
         parseDataMap: function(map, args) {
+            var def = {target: {}, data: {}, html: true, parseCb: null};
+            args = $.extend(def, args);
+            var $map = $(args.target);
+            if ($map.length < 1 || $map.find('[data-tela-map]').length < 1) {
+                return false;
+            }
             if ($.isFunction(args.parseCb)) {
                 map = args.parseCb.apply(args.target, [map, args.target, args.data]);
             }
-            var $map = $(args.target);
             $.each(map, function(field, value) {
                 if (typeof value === 'string') {
                     var $el = $map.find('[data-tela-map="' + field + '"]');
