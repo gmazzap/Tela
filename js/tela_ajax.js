@@ -92,17 +92,21 @@ var TelaAjax = {};
                 }
             });
         },
-        jsonEvent: function(jsonEvent, action, data, settings) {
+        jsonEvent: function(jsonEvent, action, data, settings, jqXHR) {
             if (typeof jsonEvent !== 'string' || jsonEvent === '') {
-                return;
+                return false;
             }
-            if (settings === null || typeof settings !== 'object') {
-                settings = {};
+            if (!this.isValidAjaxResponse(jqXHR)) {
+                if (settings === null || typeof settings !== 'object') {
+                    settings = {};
+                }
+                settings.dataType = 'json';
+                jqXHR = this.run(action, data, settings);
             }
-            settings.dataType = 'json';
-            return this.run(action, data, settings).done(function(result) {
+            jqXHR.done(function(result) {
                 $(window).trigger(jsonEvent, result);
             });
+            return jqXHR;
         }
     };
 
