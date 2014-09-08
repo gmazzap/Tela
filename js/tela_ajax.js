@@ -2,7 +2,12 @@ var TelaAjax = {};
 (function($, _Data, Nonces, Tela, window) {
 
     Tela.Ajax = {
-        run: function(action, data, configs) {
+        isValidAjaxResponse: function(jqXHR) {
+            return typeof jqXHR === 'object'
+                    && typeof jqXHR.readyState === 'number'
+                    && jqXHR.readyState > 0;
+        },
+        getAjaxSettings: function(action, data, configs) {
             if (typeof action !== 'string' || action === '') {
                 return false;
             }
@@ -12,51 +17,59 @@ var TelaAjax = {};
             if (data === null || typeof data !== 'object') {
                 data = {};
             }
+            if (typeof configs.data === 'object') {
+                data = $.extend(configs.data, data);
+            }
             if (typeof Nonces.nonces[action] === 'undefined') {
                 Nonces.nonces[action] = '';
             }
-            var settings = $.extend(
-                    configs,
-                    {
-                        url: _Data.url,
-                        data: {
-                            telaajax_is_admin: _Data.is_admin,
-                            telaajax_action: action,
-                            telaajax_nonce: Nonces.nonces[action],
-                            telaajax_data: data
-                        },
-                        type: "POST"
-                    }
-            );
-            return $.ajax(settings);
+            var ajax_data = {
+                telaajax_is_admin: _Data.is_admin,
+                telaajax_action: action,
+                telaajax_nonce: Nonces.nonces[action],
+                telaajax_data: data
+            };
+            return $.extend(configs, {url: _Data.url, data: ajax_data, type: "POST"});
         },
-        updateHtml: function(args) {
+        run: function(action, data, configs) {
+            return $.ajax(Tela.Ajax.getAjaxSettings(action, data, configs));
+        },
+        updateHtml: function(args, jqXHR) {
             args = $.extend({target: null, action: null, data: null, settings: null}, args);
-            if (args.settings === null || typeof args.settings !== 'object') {
-                args.settings = {};
-            }
-            if (!$(args.target).length) {
-                return false;
-            }
-            args.settings.dataType = 'html';
-            return this.run(args.action, args.data, args.settings).done(function(html) {
-                $(args.target).html(html);
-            });
-        },
-        updateDataMap: function(args) {
-            var def = {target: {}, action: '', data: {}, settings: {}, html: true, parseCb: null};
-            args = $.extend(def, args);
-            if (args.settings === null || typeof args.settings !== 'object') {
-                args.settings = {};
-            }
             var $target = $(args.target);
-            if (!$target.length || !$target.find('[data-tela-map]').length) {
+            if ($target.length < 1) {
                 return false;
             }
-            args.settings.dataType = 'json';
-            return this.run(args.action, args.data, args.settings).done(function(jsonData) {
-                Tela.Ajax.parseDataMap.apply(args.target, [jsonData, args]);
+            if (!this.isValidAjaxResponse(jqXHR)) {
+                if (args.settings === null || typeof args.settings !== 'object') {
+                    args.settings = {};
+                }
+                args.settings.dataType = 'html';
+                jqXHR = this.run(args.action, args.data, args.settings);
+            }
+            jqXHR.done(function(html) {
+                $target.html(html);
             });
+            return jqXHR;
+        },
+        updateDataMap: function(args, jqXHR) {
+            if (!this.isValidAjaxResponse(jqXHR)) {
+                var def = {target: {}, action: '', data: {}, settings: {}, html: true, parseCb: null};
+                args = $.extend(def, args);
+                if (args.settings === null || typeof args.settings !== 'object') {
+                    args.settings = {};
+                }
+                var $target = $(args.target);
+                if ($target.length < 1 || $target.find('[data-tela-map]').length < 1) {
+                    return false;
+                }
+                args.settings.dataType = 'json';
+                jqXHR = this.run(args.action, args.data, args.settings);
+            }
+            jqXHR.done(function(jsonData) {
+                Tela.Ajax.parseDataMap.apply(args.target, [jsonData, args]);
+            })
+            return jqXHR;
         },
         parseDataMap: function(map, args) {
             if ($.isFunction(args.parseCb)) {
