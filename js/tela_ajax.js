@@ -1,11 +1,18 @@
 var TelaAjax = {};
-(function($, _Data, Nonces, Tela, window) {
+function telaExec(callback, args) {
+    if (typeof callback !== 'string' || !jQuery.isFunction(TelaAjax.Ajax[callback])) {
+        return;
+    }
+    if (!jQuery.isArray(args)) {
+        args = typeof args !== 'undefined' && args !== null ? [args] : [];
+    }
+    return TelaAjax.Ajax[callback].apply(TelaAjax, args);
+}
+(function($, _D, _W, Tela, window) {
 
     Tela.Ajax = {
         isValidAjaxResponse: function(jqXHR) {
-            return typeof jqXHR === 'object'
-                    && typeof jqXHR.readyState === 'number'
-                    && jqXHR.readyState > 0;
+            return typeof jqXHR === 'object' && typeof jqXHR.readyState === 'number';
         },
         getAjaxSettings: function(action, data, configs) {
             if (typeof action !== 'string' || action === '') {
@@ -20,19 +27,24 @@ var TelaAjax = {};
             if (typeof configs.data === 'object') {
                 data = $.extend(configs.data, data);
             }
-            if (typeof Nonces.nonces[action] === 'undefined') {
-                Nonces.nonces[action] = '';
+            if (typeof _W.nonces[action] === 'undefined') {
+                _W.nonces[action] = '';
             }
             var ajax_data = {
-                telaajax_is_admin: _Data.is_admin,
+                telaajax_is_admin: _D.is_admin,
                 telaajax_action: action,
-                telaajax_nonce: Nonces.nonces[action],
+                telaajax_nonce: _W.nonces[action],
                 telaajax_data: data
             };
-            return $.extend(configs, {url: _Data.url, data: ajax_data, type: "POST"});
+            return $.extend(configs, {url: _D.url, data: ajax_data, type: "POST"});
         },
         run: function(action, data, configs) {
-            return $.ajax(Tela.Ajax.getAjaxSettings(action, data, configs));
+            var settings = Tela.Ajax.getAjaxSettings(action, data, configs);
+            var id_arr = action.split('::');
+            if (typeof id_arr[0] === 'string' && typeof _W.entrypoints[ id_arr[0] ] === 'string') {
+                settings.url = _W.entrypoints[ id_arr[0] ] + '?' + _D.url_args;
+            }
+            return $.ajax(settings);
         },
         updateHtml: function(args, jqXHR) {
             args = $.extend({target: null, action: null, data: null, settings: null}, args);
@@ -346,5 +358,5 @@ var TelaAjax = {};
         return this;
     };
 
-// TelaAjaxData and TelaAjaxNonces comes from wp_localize_script
-})(jQuery, TelaAjaxData, TelaAjaxNonces, TelaAjax, window);
+// TelaAjaxData and TelaAjaxWideData comes from wp_localize_script
+})(jQuery, TelaAjaxData, TelaAjaxWideData, TelaAjax, window);
