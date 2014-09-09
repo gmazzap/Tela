@@ -26,7 +26,7 @@ class JsManager implements JsManagerInterface {
     }
 
     public function addEntryPoint( $tela_id ) {
-        $entry_point = apply_filters( "tela_entrypoint_{$tela_id}", admin_url( 'admin_ajax.php' ) );
+        $entry_point = apply_filters( "tela_entrypoint_{$tela_id}", admin_url( 'admin-ajax.php' ) );
         $this->entry_points[ $tela_id ] = $entry_point;
     }
 
