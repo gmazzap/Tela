@@ -222,7 +222,7 @@ var TelaAjax = {};
             return (typeof selector !== 'string' || selector === '') ? false : selector;
         },
         response: function(response, settings) {
-            if (!Tela.Ajax.isValidAjaxResponse(response)) {
+            if (typeof response !== 'object' || response === null) {
                 return false;
             }
             if ($.isFunction(settings.done)) {
@@ -255,7 +255,7 @@ var TelaAjax = {};
             } else {
                 response = Tela.Ajax.updateHtml.apply(Tela.Ajax, [args]);
             }
-            return Tela.PluginHelpers.response(response, args.settings);
+            return Tela.PluginHelpers.response(response, settings);
         },
         runCallerAction: function(caller, settings) {
             settings = $.extend({action: null, ajax: null, data: null}, settings);
@@ -329,14 +329,18 @@ var TelaAjax = {};
         if (typeof settings === 'object' && typeof settings.updateOn !== 'undefined') {
             switch (settings.updateOn) {
                 case 'subject-event' :
-                    return Tela.PluginMethods.subjectEvent.apply(this, [settings]);
+                    Tela.PluginMethods.subjectEvent.apply(this, [settings]);
+                    break;
                 case 'global-event' :
                 case 'document-event' :
-                    return Tela.PluginMethods.globalEvent.apply(this, [settings]);
+                    Tela.PluginMethods.globalEvent.apply(this, [settings]);
+                    break;
                 case 'self-event' :
-                    return Tela.PluginMethods.selfEvent.apply(this, [settings]);
+                    Tela.PluginMethods.selfEvent.apply(this, [settings]);
+                    break;
                 default :
-                    return Tela.PluginMethods.runAction.apply(this, [settings]);
+                    Tela.PluginMethods.runAction.apply(this, [settings]);
+                    break;
             }
         }
         return this;
