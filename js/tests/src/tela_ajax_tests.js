@@ -3,7 +3,7 @@ function justACallback() {
 }
 (function($, Tela, QUnit) {
 
-    QUnit.module("TelaAjax Callbacks");
+    QUnit.module("TelaAjaxCallbacks");
 
     QUnit.test("Test: getAjaxSettings() No custom settings", function(assert) {
         expect(1);
@@ -41,7 +41,7 @@ function justACallback() {
 
     QUnit.asyncTest("Test: run() Execute ajax (text)", function(assert) {
         expect(1);
-        var get_text = Tela.Ajax.run('test::get_text', {foo: 'bar', bar: 'baz'}, {fake: true});
+        var get_text = Tela.Ajax.run('test::get_text', {foo: 'bar', bar: 'baz'}, {fake: true, wait: 10});
         get_text.always(function(data) {
             assert.deepEqual(data, 'moked text request');
             QUnit.start();
@@ -50,7 +50,7 @@ function justACallback() {
 
     QUnit.asyncTest("Test: run() Execute ajax (html)", function(assert) {
         expect(1);
-        var get_html = Tela.Ajax.run('test::get_html', {foo: 'bar', bar: 'baz'}, {fake: true, dataType: 'html'});
+        var get_html = Tela.Ajax.run('test::get_html', {foo: 'bar', bar: 'baz'}, {fake: true, wait: 10, dataType: 'html'});
         get_html.always(function(data) {
             assert.deepEqual(data, '<p>moked html request</p>');
             QUnit.start();
@@ -59,7 +59,7 @@ function justACallback() {
 
     QUnit.asyncTest("Test: run() Execute ajax (json)", function(assert) {
         expect(1);
-        var get_json = Tela.Ajax.run('test::get_json', {status: 'Success!'}, {fake: true, dataType: 'json'});
+        var get_json = Tela.Ajax.run('test::get_json', {status: 'Success!'}, {fake: true, wait: 10, dataType: 'json'});
         get_json.always(function(data) {
             assert.deepEqual(data.status, 'Success!');
             QUnit.start();
@@ -143,7 +143,7 @@ function justACallback() {
         Tela.Ajax.jsonEvent('custom_event', 'foo', {}, {}, mockedJqXHR);
     });
 
-    QUnit.module("TelaAjax Plugin Helpers");
+    QUnit.module("TelaAjaxPluginHelpers");
 
     QUnit.test("Test: ensureDataAttrType()", function(assert) {
         expect(20);
@@ -315,13 +315,6 @@ function justACallback() {
 
     QUnit.test("Test: response()", function(assert) {
         expect(3);
-        assert.deepEqual(Tela.PluginHelpers.response(), false);
-        assert.deepEqual(Tela.PluginHelpers.response({foo: 'bar'}), false);
-        var setter = function(callback) {
-            if ($.isFunction(callback)) {
-                this.callbacks.push(callback);
-            }
-        };
         var doneCb = function() {
             return 'done';
         };
@@ -330,6 +323,14 @@ function justACallback() {
         };
         var alwaysCb = function() {
             return 'always';
+        };
+        var settings = {done: doneCb, fail: failCb, always: alwaysCb};
+        assert.deepEqual(Tela.PluginHelpers.response(null, settings), false);
+        assert.deepEqual(Tela.PluginHelpers.response('', settings), false);
+        var setter = function(callback) {
+            if ($.isFunction(callback)) {
+                this.callbacks.push(callback);
+            }
         };
         var jqXHR = {
             readyState: 1,
@@ -345,9 +346,123 @@ function justACallback() {
             fail: setter,
             always: setter
         };
-        var settings = {done: doneCb, fail: failCb, always: alwaysCb};
         var result = Tela.PluginHelpers.response.apply(jqXHR, [jqXHR, settings]);
         assert.deepEqual(result, expected);
     });
+
+    QUnit.module("TelaAjaxPluginMethods", {
+        setup: function() {
+            var markup = '<div id="target"></div>'
+                    + '<div id="target2"></div>'
+                    + '<button id="clickme1">Clickme</button>'
+                    + '<button id="clickme2">Clickme</button>';
+            $('#qunit-fixture').empty().append(markup);
+        }
+    });
+
+    QUnit.asyncTest("Test: subjectEvent Plugin method", function(assert) {
+        expect(1);
+        var settings = {
+            action: 'test::get_html',
+            event: 'click',
+            subject: '#clickme1',
+            ajax: {wait: 10, fake: true},
+            html: true,
+            always: function() {
+                assert.deepEqual($('#target').html(), '<p>moked html request</p>');
+                QUnit.start();
+            }
+        };
+        Tela.PluginMethods.subjectEvent.apply($('#target'), [settings]);
+        $('#clickme1').trigger('click');
+    });
+
+    QUnit.asyncTest("Test: globalEvent Plugin method (window triggerer)", function(assert) {
+        expect(1);
+        var settings = {
+            action: 'test::get_html',
+            event: 'custom-event.telaajax',
+            updateOn: 'global-event',
+            ajax: {wait: 10, fake: true},
+            html: true,
+            always: function() {
+                assert.deepEqual($('#target').html(), '<p>moked html request</p>');
+                QUnit.start();
+            }
+        };
+        Tela.PluginMethods.globalEvent.apply($('#target'), [settings]);
+        $(window).trigger('custom-event');
+    });
+
+    QUnit.asyncTest("Test: globalEvent Plugin method (document triggerer)", function(assert) {
+        expect(1);
+        QUnit.stop();
+        var settings = {
+            action: 'test::get_html',
+            event: 'custom-event.telaajax',
+            updateOn: 'document-event',
+            ajax: {wait: 10, fake: true},
+            html: true,
+            always: function() {
+                assert.deepEqual($('#target').html(), '<p>moked html request</p>');
+                QUnit.start();
+            }
+        };
+        Tela.PluginMethods.globalEvent.apply($('#target'), [settings]);
+        $(document).trigger('custom-event');
+    });
+
+    QUnit.asyncTest("Test: selfEvent Plugin method", function(assert) {
+        expect(1);
+        var settings = {
+            action: 'test::get_html',
+            event: 'click',
+            updateOn: 'self-event',
+            ajax: {wait: 10, fake: true},
+            html: true,
+            always: function() {
+                assert.deepEqual($('#target2').html(), '<p>moked html request</p>');
+                QUnit.start();
+            }
+        };
+        Tela.PluginMethods.selfEvent.apply($('#target2'), [settings]);
+        $('#target2').trigger('click');
+    });
+
+    QUnit.asyncTest("Test: runAction Plugin method", function(assert) {
+        expect(1);
+        var settings = {
+            action: 'test::get_json',
+            event: 'click',
+            ajax: {wait: 10, fake: true},
+            data: {nonce: TelaAjaxNonces.nonces['test::get_json']},
+            always: function(response) {
+                assert.deepEqual(response.nonce, 'get_json_jnonce');
+                QUnit.start();
+            }
+        };
+        Tela.PluginMethods.runAction.apply($('#clickme2'), [settings]);
+        $('#clickme2').trigger('click');
+    });
+
+    QUnit.module("TelaAjaxPlugin");
+
+    QUnit.asyncTest("Test: Plugin", function(assert) {
+        expect(2);
+        $('#qunit-fixture').empty().append('<div id="plugin-test"></div>');
+        var settings = {
+            action: 'test::get_json',
+            event: 'click',
+            ajax: {wait: 10, fake: true},
+            data: {nonce: TelaAjaxNonces.nonces['test::get_json']},
+            always: function(response) {
+                assert.deepEqual(response.nonce, 'get_json_jnonce');
+                assert.deepEqual($('#plugin-test').html(), '<p>foo</p>');
+                QUnit.start();
+            }
+        };
+        $('#plugin-test').telaAjax(settings).html('<p>foo</p>').trigger('click');
+    });
+
 
 })(jQuery, TelaAjax, QUnit);
