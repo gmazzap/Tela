@@ -435,7 +435,7 @@ function justACallback() {
             action: 'test::get_json',
             event: 'click',
             ajax: {wait: 10, fake: true},
-            data: {nonce: TelaAjaxNonces.nonces['test::get_json']},
+            data: {nonce: TelaAjaxWideData.nonces['test::get_json']},
             always: function(response) {
                 assert.deepEqual(response.nonce, 'get_json_jnonce');
                 QUnit.start();
@@ -454,7 +454,7 @@ function justACallback() {
             action: 'test::get_json',
             event: 'click',
             ajax: {wait: 10, fake: true},
-            data: {nonce: TelaAjaxNonces.nonces['test::get_json']},
+            data: {nonce: TelaAjaxWideData.nonces['test::get_json']},
             always: function(response) {
                 assert.deepEqual(response.nonce, 'get_json_jnonce');
                 assert.deepEqual($('#plugin-test').html(), '<p>foo</p>');
@@ -462,6 +462,27 @@ function justACallback() {
             }
         };
         $('#plugin-test').telaAjax(settings).html('<p>foo</p>').trigger('click');
+    });
+
+    QUnit.module("TelaExec");
+
+    QUnit.test("Test: telaAjax() Function", function(assert) {
+        expect(3);
+        var mockedJqXHR = {readyState: 1};
+        assert.deepEqual(telaExec('isValidAjaxResponse', mockedJqXHR), true);
+        assert.deepEqual(telaExec('isValidAjaxResponse', [{foo: 'bar'}]), false);
+        var expected = {
+            url: 'http://example.com/admin-ajax.php?bid=1&action=telaajax_proxy&telaajax=1',
+            data: {
+                telaajax_is_admin: '0',
+                telaajax_action: 'test::get_text',
+                telaajax_nonce: 'get_text_nonce',
+                telaajax_data: {foo: 'bar'}
+            },
+            type: "POST"
+        };
+        var current = telaExec('getAjaxSettings', ['test::get_text', {foo: 'bar'}]);
+        assert.deepEqual(current, expected);
     });
 
 
