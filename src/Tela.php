@@ -460,6 +460,7 @@ class Tela {
             return $js_manager;
         }
         $js_manager->addNonces( $this->nonces );
+        $js_manager->addEntryPoint( $this->getId() );
         if ( ! $js_manager->enabled() ) {
             $js_manager->enable();
         }

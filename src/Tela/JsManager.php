@@ -2,7 +2,8 @@
 
 class JsManager implements JsManagerInterface {
 
-    private $nonces;
+    private $nonces = [ ];
+    private $entry_points = [ ];
     private $handle;
     private $enabled = FALSE;
     private $script_added = FALSE;
@@ -11,7 +12,7 @@ class JsManager implements JsManagerInterface {
     public function enable() {
         $this->enabled = TRUE;
         add_action( $this->getHook(), [ $this, 'addScript' ] );
-        add_action( $this->getHook(), [ $this, 'addNoncesData' ], PHP_INT_MAX );
+        add_action( $this->getHook(), [ $this, 'addInstancesData' ], PHP_INT_MAX );
     }
 
     public function enabled() {
@@ -20,12 +21,21 @@ class JsManager implements JsManagerInterface {
 
     public function addNonces( Array $nonces = [ ] ) {
         if ( ! empty( $nonces ) ) {
-            $this->nonces = array_filter( array_merge( (array) $this->nonces, $nonces ) );
+            $this->nonces = array_filter( array_merge( $this->nonces, $nonces ) );
         }
+    }
+
+    public function addEntryPoint( $tela_id ) {
+        $entry_point = apply_filters( "tela_entrypoint_{$tela_id}", admin_url( 'admin_ajax.php' ) );
+        $this->entry_points[ $tela_id ] = $entry_point;
     }
 
     public function getNonces() {
         return $this->nonces;
+    }
+
+    public function getEntryPoints() {
+        return $this->entry_points;
     }
 
     public function scriptAdded() {
@@ -55,15 +65,16 @@ class JsManager implements JsManagerInterface {
         wp_localize_script( $this->getHandle(), 'TelaAjaxData', $this->getScriptData() );
     }
 
-    public function addNoncesData() {
+    public function addInstancesData() {
         if ( $this->noncesAdded() || ! $this->scriptAdded() ) {
             return FALSE;
         }
         $this->nonces_added = TRUE;
-        $nonces = $this->getNonces();
-        if ( ! empty( $nonces ) ) {
-            wp_localize_script( $this->getHandle(), "TelaAjaxNonces", [ 'nonces' => $nonces ] );
-        }
+        $data = [
+            'nonces'      => $this->getNonces(),
+            'entrypoints' => $this->getEntryPoints()
+        ];
+        wp_localize_script( $this->getHandle(), "TelaAjaxWideData", $data );
     }
 
     public function getHook() {
@@ -97,6 +108,7 @@ class JsManager implements JsManagerInterface {
         ];
         $data = [
             'url'      => add_query_arg( $url_args, admin_url( 'admin-ajax.php' ) ),
+            'url_args' => http_build_query( $url_args ),
             'is_admin' => is_admin() ? '1' : '0'
         ];
         return $data;

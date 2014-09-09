@@ -8,7 +8,7 @@ class JsManagerTest extends TestCase {
         $manager = \Mockery::mock( 'GM\Tela\JsManager' )->makePartial();
         $manager->shouldReceive( 'getHook' )->andReturn( 'wp_enqueue_scripts' );
         \WP_Mock::expectActionAdded( 'wp_enqueue_scripts', [ $manager, 'addScript' ] );
-        \WP_Mock::expectActionAdded( 'wp_enqueue_scripts', [ $manager, 'addNoncesData' ], PHP_INT_MAX );
+        \WP_Mock::expectActionAdded( 'wp_enqueue_scripts', [ $manager, 'addInstancesData' ], PHP_INT_MAX );
         $manager->enable();
         assertTrue( $manager->enabled() );
     }
@@ -51,31 +51,35 @@ class JsManagerTest extends TestCase {
         assertFalse( $manager->addScript() );
     }
 
-    function testAddNoncesData() {
-        $nonces = [ 'foo' => 'bar', 'bar' => 'baz' ];
+    function testAddInstancesData() {
+        $data = [
+            'nonces'      => [ 'foo' => 'bar', 'bar' => 'baz' ],
+            'entrypoints' => [ 'test' => 'http://www.example.com/foo' ]
+        ];
         $manager = \Mockery::mock( 'GM\Tela\JsManager' )->makePartial();
-        $manager->shouldReceive( 'getNonces' )->andReturn( $nonces );
+        $manager->shouldReceive( 'getNonces' )->andReturn( $data[ 'nonces' ] );
+        $manager->shouldReceive( 'getEntryPoints' )->andReturn( $data[ 'entrypoints' ] );
         $manager->shouldReceive( 'getHandle' )->andReturn( 'handle' );
         $manager->shouldReceive( 'scriptAdded' )->andReturn( TRUE );
         \WP_Mock::wpFunction( 'wp_localize_script', [
             'times'  => 1,
             'return' => NULL,
-            'args'   => [ 'handle', 'TelaAjaxNonces', [ 'nonces' => $nonces ] ]
+            'args'   => [ 'handle', 'TelaAjaxWideData', $data ]
         ] );
-        assertNull( $manager->addNoncesData() );
+        assertNull( $manager->addInstancesData() );
     }
 
-    function testAddNoncesDataRunOnce() {
+    function testAddInstancesDataRunOnce() {
         $manager = \Mockery::mock( 'GM\Tela\JsManager' )->makePartial();
         $manager->shouldReceive( 'noncesAdded' )->andReturn( TRUE );
-        assertFalse( $manager->addNoncesData() );
+        assertFalse( $manager->addInstancesData() );
     }
 
-    function testAddNoncesDataNotRunIfNotScript() {
+    function testAddInstancesDataNotRunIfNotScript() {
         $manager = \Mockery::mock( 'GM\Tela\JsManager' )->makePartial();
         $manager->shouldReceive( 'noncesAdded' )->andReturn( FALSE );
         $manager->shouldReceive( 'scriptAdded' )->andReturn( FALSE );
-        assertFalse( $manager->addNoncesData() );
+        assertFalse( $manager->addInstancesData() );
     }
 
     function testGetHandleNeverNull() {
@@ -118,6 +122,7 @@ class JsManagerTest extends TestCase {
         ] );
         $expected = [
             'url'      => 'http://example.com/admin-ajax.php?telaajax=1&action=telaajax_proxy&bid=1',
+            'url_args' => 'telaajax=1&action=telaajax_proxy&bid=1',
             'is_admin' => '0'
         ];
         $manager = new Manager;

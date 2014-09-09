@@ -234,6 +234,7 @@ class TelaTest extends TestCase {
             ->with( 'jsmanager' )
             ->andReturn( $js_manager );
         $js_manager->shouldReceive( 'addNonces' )->once()->with( [ ] )->andReturnNull();
+        $js_manager->shouldReceive( 'addEntryPoint' )->once()->with( 'test' )->andReturnNull();
         $js_manager->shouldReceive( 'enabled' )->once()->withNoArgs()->andReturn( FALSE );
         $js_manager->shouldReceive( 'enable' )->once()->withNoArgs()->andReturnNull();
         assertNull( $tela->whenLoaded() );
