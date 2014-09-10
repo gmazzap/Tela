@@ -24,7 +24,7 @@ function telaExec(callback, args) {
             if (data === null || typeof data !== 'object') {
                 data = {};
             }
-            if (typeof configs.data === 'object') {
+            if (typeof configs.data === 'object' && configs.data !== null) {
                 data = $.extend(configs.data, data);
             }
             if (typeof _W.nonces[action] === 'undefined') {
