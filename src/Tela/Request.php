@@ -10,7 +10,10 @@ class Request implements RequestInterface {
                 'telaajax_action'   => FILTER_SANITIZE_STRING,
                 'telaajax_nonce'    => FILTER_SANITIZE_STRING,
                 'telaajax_is_admin' => FILTER_SANITIZE_NUMBER_INT,
-                'telaajax_data'     => FILTER_REQUIRE_ARRAY
+                'telaajax_data'     => [
+                    'filter' => FILTER_UNSAFE_RAW,
+                    'flags'  => FILTER_REQUIRE_ARRAY,
+                ],
                 ] );
             $input_get = filter_input_array( INPUT_GET, [
                 'telaajax' => FILTER_SANITIZE_NUMBER_INT,
