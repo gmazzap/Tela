@@ -1,4 +1,5 @@
 var TelaAjax = {};
+
 function telaExec(callback, args) {
     if (typeof callback !== 'string' || !jQuery.isFunction(TelaAjax.Ajax[callback])) {
         return;
@@ -8,6 +9,7 @@ function telaExec(callback, args) {
     }
     return TelaAjax.Ajax[callback].apply(TelaAjax, args);
 }
+
 (function($, _D, _W, Tela, window) {
 
     Tela.Ajax = {
