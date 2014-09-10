@@ -72,8 +72,7 @@ Javascript
 HTML
 
     <div id="name">John</div>
-    <div id="greating" data-tela-subject="#sayhello" data-tela-event="click">
-    </div>
+    <div id="greating" data-tela-subject="#sayhello" data-tela-event="click"></div>
     <button id="sayhello">Say Hello</button>
 
 
