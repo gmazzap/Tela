@@ -27,9 +27,9 @@ Main reasons:
 
 ##How much code is needed for a single simple ajax task in WordPress?
 
-In this [**Gist**](https://gist.github.com/Giuseppe-Mazzapica/40d924560e098dfbab31)  you can find 2 files, one for the PHP part and one for the JS part of a super-simple ajax action, using all the best practices and recomendations for ajax in WordPress.
+Have a look at [ajax chapter](http://www.wptherightway.org/javascript/README.html#ajax) in "WordPress The Right Way" by Tom J Nowell ([@tarenday](https://github.com/Tarendai)). In code samples there, counting both PHP and JS, there are more than 40 non-comment, relevant, lines of code.
 
-Counting both files there are 43 non-comment, relevant, lines of code. And note that **code like that must be wrote again and again for every ajax action**: if you have dozen of actions you have to multiply that code for every action... what a pain!
+And note that **code like that must be wrote again and again for every ajax action**: if you have dozen of actions you have to multiply that code for every action... what a pain!
 
 If you are a newbie developer you are probably scared.
 
@@ -89,11 +89,6 @@ Previous code:
  - That html string is automatically inserted inside the div with id *"greating"*
  - All is done using all WordPress best practices and recomendations
 
-So using, literally, 3 lines of PHP and 3 lines of JS with Tela is possible to do what requires 50 or more lines using standard WordPress code: the code in the Gist linked above, with its 43 lines of code, does quite less.
+So using 3 lines of PHP and 3 lines of JS with Tela is possible to do what requires 50 or more lines using standard WordPress code: the "right way" code linked above, with its 40+ lines, does quite less.
 
 This is only a very tiny sample of what Tela can do, it has a lot of powerful handy features that make developer life easier.
-
-    
-    
-
-
