@@ -4,12 +4,12 @@ var TelaAjaxData = {
     is_admin: '0'
 };
 
-var TelaAjaxWideData = {nonces: {}, entrypoints: {test: 'http://example.it/admin-ajax.php'}};
+var TelaAjaxWideData = {nonces: {}, entrypoints: {test: 'http://example.it/admin-ajax.php?c=1'}};
 TelaAjaxWideData.nonces['test::get_text'] = 'get_text_nonce';
 TelaAjaxWideData.nonces['test::get_json'] = 'get_json_jnonce';
 TelaAjaxWideData.nonces['test::get_html'] = 'get_html_nonce';
 
-var moked_ajax_url = TelaAjaxWideData.entrypoints.test + '?' + TelaAjaxData.url_args;
+var moked_ajax_url = TelaAjaxWideData.entrypoints.test + '&' + TelaAjaxData.url_args;
 
 jQuery.ajax.fake.registerWebservice(moked_ajax_url, function(data) {
     if (!jQuery.type(data) === 'object' || !jQuery.type(data.telaajax_action) === 'string') {

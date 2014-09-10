@@ -26,8 +26,11 @@ class JsManager implements JsManagerInterface {
     }
 
     public function addEntryPoint( $tela_id ) {
-        $entry_point = apply_filters( "tela_entrypoint_{$tela_id}", admin_url( 'admin-ajax.php' ) );
-        $this->entry_points[ $tela_id ] = $entry_point;
+        $default = admin_url( 'admin-ajax.php' );
+        $entry_point = apply_filters( "tela_entrypoint_{$tela_id}", $default );
+        if ( $entry_point !== $default && filter_var( $entry_point, FILTER_VALIDATE_URL ) ) {
+            $this->entry_points[ $tela_id ] = $entry_point;
+        }
     }
 
     public function getNonces() {

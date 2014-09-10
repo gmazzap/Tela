@@ -39,7 +39,9 @@ function telaExec(callback, args) {
             var settings = Tela.Ajax.getAjaxSettings(action, data, configs);
             var id_arr = action.split('::');
             if (typeof id_arr[0] === 'string' && typeof _W.entrypoints[ id_arr[0] ] === 'string') {
-                settings.url = _W.entrypoints[ id_arr[0] ] + '?' + _D.url_args;
+                var entrypoint = _W.entrypoints[ id_arr[0] ];
+                entrypoint += entrypoint.indexOf('?') !== -1 ? '&' : '?';
+                settings.url = entrypoint + _D.url_args;
             }
             return $.ajax(settings);
         },
