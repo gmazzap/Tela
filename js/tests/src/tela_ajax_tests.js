@@ -21,7 +21,7 @@ function justACallback() {
         assert.deepEqual(current, expected);
     });
 
-    QUnit.test("Test: getAjaxSettings() Merge settings", function(assert) {
+    QUnit.test("Test: getAjaxSettings() Settings with data ignored", function(assert) {
         expect(1);
         var expected = {
             url: 'http://example.com/admin-ajax.php?bid=1&action=telaajax_proxy&telaajax=1',
@@ -29,7 +29,7 @@ function justACallback() {
                 telaajax_is_admin: '0',
                 telaajax_action: 'test::get_html',
                 telaajax_nonce: 'get_html_nonce',
-                telaajax_data: {foo: 'bar', bar: 'baz'}
+                telaajax_data: {foo: 'bar'}
             },
             type: "POST",
             dataType: 'html'
