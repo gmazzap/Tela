@@ -7,13 +7,13 @@ class Request implements RequestInterface {
     function get() {
         if ( ! is_array( $this->vars ) ) {
             $input_post = filter_input_array( INPUT_POST, [
+                'telaajax_data'     => [
+                    'filter' => FILTER_UNSAFE_RAW,
+                    'flags'  => FILTER_REQUIRE_ARRAY
+                ],
                 'telaajax_action'   => FILTER_SANITIZE_STRING,
                 'telaajax_nonce'    => FILTER_SANITIZE_STRING,
                 'telaajax_is_admin' => FILTER_SANITIZE_NUMBER_INT,
-                'telaajax_data'     => [
-                    'filter' => FILTER_UNSAFE_RAW,
-                    'flags'  => FILTER_REQUIRE_ARRAY,
-                ],
                 ] );
             $input_get = filter_input_array( INPUT_GET, [
                 'telaajax' => FILTER_SANITIZE_NUMBER_INT,
