@@ -48,18 +48,24 @@ It is unit tested both on PHP side using [PHPUnit](https://phpunit.de/) and on J
 
  PHP 
  
-    GM\Tela::instance( 'test' )->add( 'my_action', function( $data ) {
-      return '<p>Hello ' . $data['name'] . '!</p>';
-    }, [ 'public' => FALSE, 'side' => 'front', 'send_json' => FALSE ] );
+    $tela = GM\Tela::instance( 'test' );
+    $args =  array( 'public' => FALSE, 'side' => 'front', 'send_json' => FALSE );
+    $tela->add(
+      'my_action',
+      function( $data ) {
+        return '<p>Hello ' . $data['name'] . '!</p>';
+      },
+      $args
+    );
 
 
 Javascript
 
     (function($) {
-       $('#greating').telaAjax({
-          data: function() { return { name: $('#name').text(); } },
-          action: "test::my_action"
-	   });
+      $('#greating').telaAjax({
+        data: function() { return { name: $('#name').text(); } },
+        action: "test::my_action"
+      });
     })(jQuery);
 
 
