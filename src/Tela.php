@@ -267,6 +267,20 @@ class Tela {
     }
 
     /**
+     * Can be used to register callbacks without having to wait tela_register_{$id} hook
+     *
+     * @return void
+     */
+    public function add( $action, $callback, Array $args = [ ], $action_class = '' ) {
+        $closure = function() use($action, $callback, $args, $action_class ) {
+            $this->register( $action, $callback, $args, $action_class );
+        };
+        $id = $this->getId();
+        add_action( "tela_register_{$id}", $closure );
+        return $this;
+    }
+
+    /**
      * Method to be used to register ajax callbacks.
      * Should be called on "tela_register_{$id}" action hook or on "wp_loaded".
      *
