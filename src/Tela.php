@@ -255,7 +255,7 @@ class Tela {
      * @return void
      */
     public function whenLoaded() {
-        if ( $this->inited() !== 1 || current_filter() !== 'wp_loaded' || ! $this->allowed() ) {
+        if ( $this->inited() !== 1 || current_filter() !== 'wp_loaded' ) {
             return;
         }
         $this->init ++;
@@ -291,9 +291,6 @@ class Tela {
      * @return GM\Tela\ActionInterface
      */
     public function register( $action, $callback, Array $args = [ ], $action_class = '' ) {
-        if ( ! $this->allowed() ) {
-            return;
-        }
         $action = $this->getId() . "::{$action}";
         $args = $this->sanitizeArgs( $args );
         if ( ! $this->isAjax() ) {
