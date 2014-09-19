@@ -7,7 +7,6 @@ class Tela {
     const BOTHSIDES = 30;
 
     private static $instances = [ ];
-    private static $js_handle = '';
     private $id;
     private $factory;
     private $when;
@@ -60,7 +59,6 @@ class Tela {
     public static function flush() {
         if ( ! function_exists( 'the_post' ) ) {
             self::$instances = [ ];
-            self::$js_handle = NULL;
             Tela\Factory::flushRegistry();
         }
     }
@@ -70,8 +68,12 @@ class Tela {
      *
      * @return string
      */
-    public static function getJsHandle() {
-        return self::$js_handle;
+    public function getJsHandle() {
+        /** @var \GM\Tela\JsManagerInterface */
+        $js_manager = $this->getFactory()->registry( 'jsmanager' );
+        if ( ! is_wp_error( $js_manager ) ) {
+            return $js_manager->getHandle();
+        }
     }
 
     /**
@@ -84,18 +86,20 @@ class Tela {
      * @return void
      * @see http://codex.wordpress.org/Function_Reference/wp_enqueue_script
      */
-    public static function enqueueJs( $handle = '', $url = '', $deps = [ ], $ver = NULL ) {
+    public function enqueueJs( $handle = '', $url = '', $deps = [ ], $ver = NULL ) {
         if (
             ! is_string( $handle )
             || ! filter_var( $url, FILTER_VALIDATE_URL )
-            || ! is_string( self::getJsHandle() )
         ) {
             return;
         }
-        $deps = array_filter( (array) $deps, 'is_string' );
-        array_unshift( $deps, self::getJsHandle() );
-        array_unshift( $deps, 'jquery' );
-        wp_enqueue_script( $handle, $url, array_filter( array_unique( $deps ) ), $ver, TRUE );
+        $tela_handle = $this->getJsHandle();
+        if ( is_string( $tela_handle ) && ! empty( $tela_handle ) ) {
+            $deps = array_filter( (array) $deps, 'is_string' );
+            array_unshift( $deps, $tela_handle );
+            array_unshift( $deps, 'jquery' );
+            wp_enqueue_script( $handle, $url, array_filter( array_unique( $deps ) ), $ver, TRUE );
+        }
     }
 
     /**
